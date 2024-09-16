@@ -1,0 +1,3 @@
+# How to install tensorflow correctly by creating new envionment
+
+https://www.youtube.com/watch?v=CrEl8QL8hsM
