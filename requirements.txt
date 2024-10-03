@@ -1,3 +1,9 @@
 # How to install tensorflow correctly by creating new envionment
 
 https://www.youtube.com/watch?v=CrEl8QL8hsM
+
+
+#----------- AIMS and OBJECTIVES----------------#
+# Extract Building Heights using Shadows: Use a shadow-based method to infer building heights from Google Earth Engine (GEE) images.
+# Create a 2.5D Map: Represent buildings in a 2.5D format, which shows flat surfaces with heights (essentially a Digital Surface Model, DSM).
+# Simulate Shadows Over the Day: Simulate how shadows move over rooftops at different times, visualizing shadow coverage on other rooftops in 2.5D.
