@@ -1,30 +1,30 @@
-import xml.etree.ElementTree as ET
+from PIL import Image
+import os
 
-def extract_coordinates_from_kml(kml_file_path):
-    # Parse the KML file
-    tree = ET.parse(kml_file_path)
-    root = tree.getroot()
+# Directory containing the images
+image_directory = "screenshots"
 
-    # Define all necessary namespaces
-    namespaces = {
-        "kml": "http://www.opengis.net/kml/2.2",  # Main KML namespace
-        "gx": "http://www.google.com/kml/ext/2.2",  # Google Earth extensions
-        "atom": "http://www.w3.org/2005/Atom",  # Atom feed
-        "xsd": "http://www.w3.org/2001/XMLSchema"  # XML schema
-    }
+# Loop through all files in the directory
+for filename in os.listdir(image_directory):
+    if filename.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff")):
+        file_path = os.path.join(image_directory, filename)
+        
+        # Open the image
+        with Image.open(file_path) as img:
+            image_width , image_height = img.size
 
-    # Find all Placemark elements and extract their coordinates
-    coordinates = []
-    for placemark in root.findall(".//kml:Placemark", namespaces=namespaces):
-        point = placemark.find(".//kml:Point/kml:coordinates", namespaces=namespaces)
-        if point is not None:
-            coord_text = point.text.strip()
-            lon, lat, _ = map(float, coord_text.split(","))
-            coordinates.append((lat, lon))
+            # Define the crop box
+            left = 600
+            upper = 100 
+            right = image_width 
+            lower = image_height - 100 
 
-    return coordinates
+            # Crop the image
+            crop_box = (left, upper, right, lower)
+            cropped_image = img.crop(crop_box) 
 
-# Extract coordinates from the provided KML file
-kml_file_path = 'resource/urban_location.kml'  # Update to your KML file path
-urban_coordinates = extract_coordinates_from_kml(kml_file_path)
-print(urban_coordinates)
+            # Save the cropped image with the same name in the same directory
+            cropped_image.save(file_path)
+            print(f"Cropped and saved: {filename}")
+
+print("All images have been cropped and saved.")
