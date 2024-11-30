@@ -3,6 +3,9 @@ import random
 import pyautogui
 import time
 
+pyautogui.FAILSAFE = False  # Disable the fail-safe
+
+
 def automate_google_earth(output_folder, num, startNum):
     # Move the mouse to the center of the screen
     pyautogui.click(800, 500)
@@ -14,12 +17,11 @@ def automate_google_earth(output_folder, num, startNum):
     # ------------------------------------------------------------#
 
     for x in range(num):
-        x_cordinates  = random_number = random.randint(0, 10)
-        y_cordinates  = random_number = random.randint(0, 10)
-
+        x_cordinates  = random.random()
+        y_cordinates  = random.random()
         # Move the map slightly using arrow keys
-        pyautogui.dragTo(x_cordinates, y_cordinates, 2,button='left')  # Drag left for even iterations
-        time.sleep(5)  # Wait for the map to refresh after the move
+        pyautogui.dragTo(x_cordinates, y_cordinates, 0.5,button='left',mouseDownUp= 'false')  # Drag left for even iterations
+        time.sleep(3)  # Wait for the map to refresh after the move
         
         # ----------- Script to get screenshots of map -----------
         # Take the screenshot
@@ -30,7 +32,7 @@ def automate_google_earth(output_folder, num, startNum):
         screenshot.save(os.path.join(output_folder, filename))
         # --------------------------------------------------------#
         
-        time.sleep(1)  # Delay between each screenshot
+        time.sleep(.1)  # Delay between each screenshot
     
 # Usage
 output_folder = "screenshots"  # Folder to save screenshots
@@ -38,4 +40,4 @@ output_folder = "screenshots"  # Folder to save screenshots
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
-automate_google_earth(output_folder, 100, 0)
+automate_google_earth(output_folder, 20, 189)
