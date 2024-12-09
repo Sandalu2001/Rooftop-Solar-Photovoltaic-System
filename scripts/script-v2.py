@@ -5,8 +5,8 @@ import os
 image_directory = "screenshots"
 
 # Range of files to crop
-start_num = 247
-end_num = 271
+start_num = 160
+end_num = 169
 
 # Loop through all files in the directory
 for filename in os.listdir(image_directory):

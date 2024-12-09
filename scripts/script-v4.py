@@ -16,9 +16,16 @@ def automate_google_earth(output_folder, num, startNum):
     time.sleep(1) 
 
     for x in range(num):
-        # Generate small offsets to slightly move the mouse
-        x_offset = random.uniform(-600, 100)  # Randomly move slightly left
-        y_offset = random.uniform(-600, 100)  # Randomly move slightly up
+        # Function to generate random numbers within the specified ranges
+        def random_offset():
+            if random.choice([True, False]):
+                return random.uniform(-400, -250)  # Range -400 to -100
+            else:
+                return random.uniform(0, 100)  # Range 100 to 400
+
+        # Generate offsets
+        x_offset = random_offset()
+        y_offset = random_offset()
         
         # Compute new position
         new_x = start_x + x_offset
@@ -46,4 +53,4 @@ output_folder = "screenshots"  # Folder to save screenshots
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
-automate_google_earth(output_folder, 15, 15)
+automate_google_earth(output_folder, 30, 55)
