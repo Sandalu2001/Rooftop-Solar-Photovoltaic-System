@@ -1,0 +1,11 @@
+# Ignore dataset files
+data/*
+screenshots/*
+
+# Ignore model files unless versioned with Git LFS
+models/*
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
