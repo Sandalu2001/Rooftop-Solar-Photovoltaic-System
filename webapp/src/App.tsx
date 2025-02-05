@@ -14,6 +14,8 @@ import Login from "./components/Login";
 import { AuthState } from "./types/componentInterfaces";
 import { useAppDispatch, useAppSelector } from "./slices/store";
 import { setAuthState } from "./slices/auth-slice";
+import DefaultComponent from "./components/annotation/Annotation";
+import { Annotorious } from "@annotorious/react";
 
 Amplify.configure(outputs);
 
@@ -66,7 +68,10 @@ function App() {
 
   return (
     <Box className="App" sx={{ height: "100vh" }}>
-      <RouterProvider router={router} />
+      {/* <RouterProvider router={router} /> */}
+      <Annotorious>
+        <DefaultComponent />
+      </Annotorious>
     </Box>
   );
 }
