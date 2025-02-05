@@ -2,14 +2,18 @@ import { Theme, alpha, createTheme } from "@mui/material/styles";
 import { green } from "@mui/material/colors";
 import type {} from "@mui/x-data-grid-pro/themeAugmentation";
 import { borderRadius, lineHeight } from "@mui/system";
+import "./App.css";
 
 export const theme = createTheme({
   palette: {
     primary: {
       main: "#0F6A58",
     },
-    info: {
+    secondary: {
       main: "#BAD36E",
+    },
+    info: {
+      main: "#FFF",
     },
     error: {
       main: "#D35D6E",
@@ -21,12 +25,12 @@ export const theme = createTheme({
       main: "#EFB495",
     },
     background: {
-      paper: "#01191E",
-      default: "#FFFFFF",
+      default: "#F1F2F6",
+      paper: "#FFFFFF",
     },
   },
   typography: {
-    fontFamily: ["Lexend", "Poppins", "sans-serif"].join(","),
+    fontFamily: ["Lexend", "Poppins", "sans-serif", "MuseoModerno"].join(","),
     fontSize: 10,
   },
   components: {
