@@ -1,38 +1,25 @@
-.App {
-  text-align: center;
+@font-face {
+  font-family: "Poppins";
+  src: local("PoppinsRegular"),
+    url("./assets/fonts/Poppins-Regular.ttf") format("truetype");
+  font-weight: 400;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+@font-face {
+  font-family: "Lexend";
+  src: local("LexendRegular"),
+    url("./assets/fonts/Lexend-Regular.ttf") format("truetype");
+  font-weight: 400;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+@font-face {
+  font-family: "MuseoModerno";
+  src: local("MuseoModernoSemiBold"),
+    url("./assets/fonts/MuseoModerno-SemiBold.ttf") format("truetype");
+  font-weight: 600;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+@font-face {
+  font-family: "Montserrat";
+  src: url("./assets/fonts/Montserrat-VariableFont_wght.ttf") format("truetype");
 }
