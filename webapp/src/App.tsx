@@ -16,6 +16,9 @@ import { useAppDispatch, useAppSelector } from "./slices/store";
 import { setAuthState } from "./slices/auth-slice";
 import DefaultComponent from "./components/annotation/Annotation";
 import { Annotorious } from "@annotorious/react";
+import CashierPanel from "./pages/analytics-dashboard/InventoryPanel";
+import AdminPanel from "./pages/tool/Tool";
+import Home from "./pages/home/Home";
 
 Amplify.configure(outputs);
 
@@ -53,6 +56,25 @@ function App() {
     {
       path: "/",
       element: <ProtectedRoute element={<Layout />} />,
+      children: [
+        {
+          path: "/",
+          element: <Home />,
+        },
+        {
+          path: "/about",
+          element: <AdminPanel />,
+        },
+        {
+          path: "/projects",
+          element: <CashierPanel />,
+        },
+        {
+          path: "/contact",
+          element: <AdminPanel />,
+        },
+      ],
+      errorElement: <AdminPanel />,
     },
     {
       path: "/login",
@@ -67,12 +89,12 @@ function App() {
   ]);
 
   return (
-    <Box className="App" sx={{ height: "100vh" }}>
-      {/* <RouterProvider router={router} /> */}
-      <Annotorious>
-        <DefaultComponent />
-      </Annotorious>
-    </Box>
+    <Annotorious>
+      <Box className="App">
+        <RouterProvider router={router} />
+        {/* <DefaultComponent /> */}
+      </Box>
+    </Annotorious>
   );
 }
 

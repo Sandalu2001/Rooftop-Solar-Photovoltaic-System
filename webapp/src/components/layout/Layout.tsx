@@ -13,7 +13,7 @@ const Layout = () => {
   return (
     <Box className="Layout" sx={{ height: "100%" }}>
       <Suspense fallback={<div>Loading...</div>}>
-        <Box sx={{ height: "100%", p: 8 }}>
+        <Box sx={{ height: "100vh", paddingY: 8 }}>
           <NavBar commonPageTabs={routes} />
           <Box sx={{ mt: 1 }}>
             <Outlet />
