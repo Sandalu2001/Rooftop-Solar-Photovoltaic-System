@@ -1,7 +1,7 @@
 # Ignore dataset files
-model/finished/*
 data/*
 screenshots/*
+model/notebooks/output/model_final.pth
 
 # Ignore model files unless versioned with Git LFS
 models/*
