@@ -7,49 +7,25 @@ import {
   Avatar,
   Paper,
   alpha,
-  IconButton,
-  Badge,
   List,
   ListItem,
   ListItemText,
 } from "@mui/material";
-import { navBarHeight, navBarWidth } from "../constants";
-import { useLocation } from "react-router-dom";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import AddToCartPopper from "./popper/AddToCartPopper";
-import { useAppDispatch } from "../slices/store";
-import TodayIcon from "@mui/icons-material/Today";
-import BasicInfoPopper from "./popper/BasicInfoPopper";
 import UserInfoPopper from "./popper/UserInfoPopper";
 import { NavBarProps } from "../types/componentInterfaces";
 import { Link } from "react-router-dom";
 
 const NavBar = ({ commonPageTabs }: NavBarProps) => {
-  const location = useLocation().search;
-  const [routeName, setRouteName] = useState(location.split("=").pop());
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [userInfoAnchorEl, setUserInfoAnchorEl] = useState<null | HTMLElement>(
     null
   );
-  const date = new Date();
 
   const navLinks = [
     { label: "Home", path: "/" },
     { label: "Estminations", path: "/about" },
-    { label: "Solar Panels", path: "/services" },
+    { label: "Solar Panels", path: "/tool" },
     { label: "Contact Us", path: "/contact" },
   ];
-
-  const addToCartPopperHandler = (
-    event: React.MouseEvent<HTMLElement> | null
-  ) => {
-    if (event) {
-      event.preventDefault();
-      setAnchorEl(anchorEl ? null : event.currentTarget);
-    } else {
-      setAnchorEl(null);
-    }
-  };
 
   const basicInfoPopperHandler = (
     event: React.MouseEvent<HTMLElement> | null
@@ -62,9 +38,6 @@ const NavBar = ({ commonPageTabs }: NavBarProps) => {
     }
   };
 
-  useEffect(() => {
-    setRouteName(location.split("=").pop());
-  }, [location]);
   return (
     <>
       <AppBar
@@ -74,7 +47,8 @@ const NavBar = ({ commonPageTabs }: NavBarProps) => {
           justifyContent: "center",
           boxShadow: "none",
           bgcolor: "transparent",
-          mb: 8,
+          paddingX: 12,
+          mb: 10,
         }}
       >
         <Toolbar>
