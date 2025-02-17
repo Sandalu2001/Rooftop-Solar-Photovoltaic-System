@@ -1,4 +1,5 @@
 # Ignore dataset files
+model/finished/*
 data/*
 screenshots/*
 
