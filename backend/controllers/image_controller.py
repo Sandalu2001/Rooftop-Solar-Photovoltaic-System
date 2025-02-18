@@ -1,0 +1,41 @@
+import os
+from flask import Blueprint, request, jsonify, send_file
+from werkzeug.utils import secure_filename
+from model.detectron_model import DetectronModel
+
+image_controller = Blueprint("image_controller", __name__)
+model = DetectronModel()
+
+UPLOAD_FOLDER = "uploads"
+RESULT_FOLDER = "results"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(RESULT_FOLDER, exist_ok=True)
+
+@image_controller.route("/predict", methods=["POST"])
+def predict():
+    """Handle image upload and run model inference."""
+    if "image" not in request.files:
+        return jsonify({"error": "No image uploaded"}), 400
+
+    file = request.files["image"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    # Save uploaded image
+    filename = secure_filename(file.filename)
+    img_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(img_path)
+
+    try:
+        result_path = model.predict(img_path)
+        
+         # Convert to absolute path
+        abs_result_path = os.path.abspath(result_path)
+        print(f"Sending file: {abs_result_path}")
+
+        if not os.path.exists(abs_result_path):
+            return jsonify({"error": f"File not found: {abs_result_path}"}), 500
+        
+        return send_file(abs_result_path, mimetype="image/png")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

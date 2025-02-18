@@ -1,0 +1,7 @@
+# Ignore dataset files
+/venv
+# /detectron2
+/model/output/*
+/results
+/uploads
+/detectron2
