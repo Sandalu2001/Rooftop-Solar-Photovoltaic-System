@@ -59,7 +59,15 @@ def match():
     file.save(img_path)
 
     try:
-        match = matcher.process_image(img_path) 
-        return jsonify(match)
+        result_path = matcher.process_image(img_path)
+        
+         # Convert to absolute path
+        abs_result_path = os.path.abspath(result_path)
+        print(f"Sending file: {abs_result_path}")
+
+        if not os.path.exists(abs_result_path):
+            return jsonify({"error": f"File not found: {abs_result_path}"}), 500
+        
+        return send_file(abs_result_path, mimetype="image/png")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
