@@ -2,9 +2,11 @@ import os
 from flask import Blueprint, request, jsonify, send_file
 from werkzeug.utils import secure_filename
 from model.detectron_model import DetectronModel
+from model.centroid_model import BuildingShadowMatcher
 
 image_controller = Blueprint("image_controller", __name__)
 model = DetectronModel()
+matcher = BuildingShadowMatcher()
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
@@ -22,7 +24,7 @@ def predict():
         return jsonify({"error": "Empty filename"}), 400
 
     # Save uploaded image
-    filename = secure_filename(file.filename)
+    filename = secure_filename(file.filename) # Returns a secure file name 
     img_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(img_path)
 
@@ -37,5 +39,27 @@ def predict():
             return jsonify({"error": f"File not found: {abs_result_path}"}), 500
         
         return send_file(abs_result_path, mimetype="image/png")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@image_controller.route("/match", methods=["POST"])
+def match():
+    """Handle image upload and run model inference."""
+    if "image" not in request.files:
+        return jsonify({"error": "No image uploaded"}), 400
+
+    file = request.files["image"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    # Save uploaded image
+    filename = secure_filename(file.filename) # Returns a secure file name 
+    img_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(img_path)
+
+    try:
+        match = matcher.process_image(img_path) 
+        return jsonify(match)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
