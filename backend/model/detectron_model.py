@@ -18,15 +18,15 @@ class DetectronModel:
         setup_logger()
         self.cfg = get_cfg()
         self.cfg.OUTPUT_DIR = "./model/output"
-        self.cfg.MODEL.ROI_HEADS.NUM_CLASSES = 4  # um_classes+1 here.
-        self.cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")) #ResNet-101 for better feature extraction        self.cfg.MODEL.ROI_HEADS.NUM_CLASSES = 4  
+        self.cfg.MODEL.ROI_HEADS.NUM_CLASSES = 4 
+        self.cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))  
         self.cfg.MODEL.WEIGHTS = os.path.join(self.cfg.OUTPUT_DIR, "model_final.pth") 
         self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  
         self.cfg.MODEL.DEVICE = "cpu"  
 
         self.predictor = DefaultPredictor(self.cfg)
         self.metadata = MetadataCatalog.get("dataset_train").set(
-            thing_classes=["Building", "Shadow", "Tree", "Tree shadow"]  # Add your class names here
+            thing_classes=["Building", "Shadow", "Tree", "Tree shadow"] 
         ) 
 
     def predict(self, image_path: str):
@@ -48,7 +48,4 @@ class DetectronModel:
         # Save processed image
         result_path = os.path.join("results", os.path.basename(image_path))
         cv2.imwrite(result_path, out.get_image()[:, :, ::-1]) 
-
-        print(result_path)
-
         return result_path
