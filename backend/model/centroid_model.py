@@ -21,6 +21,8 @@ class BuildingShadowMatcher:
         # Get masks and categories
         masks = instances.pred_masks.numpy()
         classes = instances.pred_classes.numpy()
+
+        print(len(masks[0][0]))
         
         buildings = [masks[i] for i in range(len(classes)) if classes[i] == self.building_class]
         shadows = [masks[i] for i in range(len(classes)) if classes[i] == self.shadow_class]
