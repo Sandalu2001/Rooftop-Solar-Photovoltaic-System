@@ -8,12 +8,12 @@ import json
 class DataTypeConversionModel:
     def __init__(self):
         self.model = DetectronModel()
-        self.category_mapping = {1: "Building", 2: "Shadow", 3: "Tree", 4: "Tree_Shadow"}  # Adjust as needed
-
+        self.category_mapping = {1: "Building", 2: "Shadow", 3: "Tree", 4: "Tree_Shadow"} 
+    
     def convert(self, image_path: str, image_id: int):
         """Run inference on an image, return COCO-style annotations, and a visualized annotated image"""
         img = cv2.imread(image_path)
-        original_img = img.copy()  # Keep a copy for visualization
+        original_img = img.copy()  
         outputs = self.model.predictor(img)
         instances = outputs["instances"].to("cpu")
 
@@ -24,8 +24,6 @@ class DataTypeConversionModel:
 
         image_height, image_width = img.shape[:2]
         coco_annotations = []
-
-        colors = np.random.randint(0, 255, (len(pred_classes), 3), dtype=np.uint8)  # Generate random colors for classes
 
         for i in range(len(pred_masks)):  
             # Convert binary mask to polygons
@@ -62,20 +60,31 @@ class DataTypeConversionModel:
             }
             coco_annotations.append(annotation)
 
-            # 🔹 VISUALIZATION PART 🔹
-            color = [int(c) for c in colors[i]]  # Get unique color for object
+            # --------------- VISUALIZATION PART --------------- #
+
+            # Define category colors in BGR format 
+            category_colors = {
+                1: (255, 0, 0),    # Blue - Building
+                2: (0, 0, 255),  # Red - Shadow
+                3: (0, 0, 255),    # Green - Tree
+                4: (128, 0, 128),    # Purple - Tree_Shadow
+            }
+
+            color = category_colors.get(category_id, (255, 255, 255))  
 
             # Draw bounding box
             cv2.rectangle(original_img, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
 
             # Draw segmentation mask (overlay with transparency)
-            mask = pred_masks[i].astype(np.uint8) * 255  # Convert boolean mask to 0-255
+            mask = pred_masks[i].astype(np.uint8) * 255  # Convert binary mask to 0-255
             colored_mask = np.zeros_like(original_img, dtype=np.uint8)
-            colored_mask[:, :, 0] = mask * color[0]  # Red channel
-            colored_mask[:, :, 1] = mask * color[1]  # Green channel
-            colored_mask[:, :, 2] = mask * color[2]  # Blue channel
 
-            alpha = 0.5  # Transparency
+            # Apply category color to the mask
+            colored_mask[:, :, 0] = mask * (color[0] / 255)  # Blue channel
+            colored_mask[:, :, 1] = mask * (color[1] / 255)  # Green channel
+            colored_mask[:, :, 2] = mask * (color[2] / 255)  # Red channel
+
+            alpha = .5  # Transparency
             original_img = cv2.addWeighted(original_img, 1, colored_mask, alpha, 0)
 
             # Add label (category + confidence)
