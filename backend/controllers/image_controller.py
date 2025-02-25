@@ -100,6 +100,7 @@ def convert():
         if not os.path.exists(abs_result_path):
             return jsonify({"error": f"File not found: {abs_result_path}"}), 500
         
+        # return coco_output
         return send_file(abs_result_path, mimetype="image/png")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
