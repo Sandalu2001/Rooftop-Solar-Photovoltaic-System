@@ -1,12 +1,11 @@
-import { IconButton, SvgIconTypeMap } from "@mui/material";
+import { alpha, IconButton, SvgIconTypeMap } from "@mui/material";
 import { OverridableComponent } from "@mui/material/OverridableComponent";
 import { SvgIconComponent } from "@mui/icons-material";
 import React from "react";
 
 interface CustomIconButtonProps {
-  color: "inhert" | "error" | "success";
+  color: "inherit" | "error" | "success" | "clicked";
   action: () => void;
-
   icon: JSX.Element;
 }
 
@@ -18,25 +17,28 @@ const CustomIconButton = ({
   return (
     <>
       <IconButton
-        aria-label="delete"
         size="large"
-        color={
-          color == "error"
-            ? "error"
-            : color == "success"
-            ? "success"
-            : "inherit"
-        }
         sx={{
           p: 0.8,
-          borderRadius: 3,
-          border: 1,
+          borderRadius: 10,
+          border: color == "inherit" ? 0 : 1,
+          color:
+            color == "error"
+              ? (theme) => theme.palette.error.main
+              : color == "success"
+              ? (theme) => theme.palette.success.main
+              : color == "clicked"
+              ? "black"
+              : "white",
           borderColor:
             color == "error"
               ? (theme) => theme.palette.error.main
               : color == "success"
               ? (theme) => theme.palette.success.main
-              : "inherit",
+              : color == "clicked"
+              ? "black"
+              : "white",
+          background: color == "clicked" ? "white" : "transparent",
           "&:hover": {
             color: "white",
             background:
@@ -44,7 +46,7 @@ const CustomIconButton = ({
                 ? (theme) => theme.palette.error.main
                 : color == "success"
                 ? (theme) => theme.palette.success.main
-                : "inherit",
+                : (theme) => alpha(theme.palette.common.white, 0.05),
           },
         }}
         onClick={action}
