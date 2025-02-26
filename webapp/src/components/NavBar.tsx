@@ -12,10 +12,9 @@ import {
   ListItemText,
 } from "@mui/material";
 import UserInfoPopper from "./popper/UserInfoPopper";
-import { NavBarProps } from "../types/componentInterfaces";
 import { Link } from "react-router-dom";
 
-const NavBar = ({ commonPageTabs }: NavBarProps) => {
+const NavBar = () => {
   const [userInfoAnchorEl, setUserInfoAnchorEl] = useState<null | HTMLElement>(
     null
   );
