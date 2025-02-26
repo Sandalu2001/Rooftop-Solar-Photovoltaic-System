@@ -10,7 +10,7 @@ interface FactCardInterface {
 
 const FactCard = ({ color, description }: FactCardInterface) => {
   return (
-    <Stack gap={2} flex={1}>
+    <Stack gap={2}>
       <Stack
         sx={{
           background:
