@@ -3,7 +3,6 @@ import Grid from "@mui/material/Grid";
 import React from "react";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import Cover from "../../assets/images/login.jpg";
-import TotalOrderview from "../analytics-dashboard/components/TotalOrderview";
 import DataCard from "../../components/common/DataCard";
 import BasicDataCard from "../../components/common/BasicDataCard";
 
