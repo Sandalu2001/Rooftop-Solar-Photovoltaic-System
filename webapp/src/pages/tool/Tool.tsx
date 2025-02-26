@@ -1,26 +1,17 @@
 import {
-  Box,
-  Chip,
   FormControl,
-  IconButton,
-  InputLabel,
   MenuItem,
-  Paper,
   Select,
-  SelectChangeEvent,
   Stack,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
 import Cover from "../../assets/images/roof.png";
 import DoneIcon from "@mui/icons-material/Done";
 import CloseIcon from "@mui/icons-material/Close";
 import CustomIconButton from "../../components/common/CustomIconButton";
 import {
-  Annotation,
   AnnotationState,
-  Annotorious,
-  createImageAnnotator,
   ImageAnnotation,
   ImageAnnotationPopup,
   ImageAnnotator,
@@ -29,6 +20,8 @@ import {
   useSelection,
 } from "@annotorious/react";
 import "@annotorious/react/annotorious-react.css";
+import FactCard from "../../components/common/FactCard";
+import ControlPanel from "../../components/common/ControlPanel";
 
 enum ClassTypes {
   BUILDING = "building",
@@ -43,31 +36,31 @@ const Tool = () => {
 
   const annotations = useAnnotations();
   const anno = useAnnotator();
-  const { selected } = useSelection();
+  const { selected } = useSelection(); // Get the selected annotation
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  //----------------- Styling the annotations ----------------- //
   useEffect(() => {
-    console.log(annotations);
     if (anno && annotations.length > 0) {
       anno.setStyle((annotation, state) => {
-        // const classTag = annotation.body[0].value;
-        // console.log(classTag);
+        const classTag = annotation.bodies[0]?.value;
 
+        console.log(classTag);
         let color: any = "#0000FF"; // Default to blue
-        // switch (classTag) {
-        //   case ClassTypes.BUILDING:
-        //     color = "#0000FF"; // Blue
-        //     break;
-        //   case ClassTypes.BUILDINGSHADOW:
-        //     color = "#808080"; // Gray
-        //     break;
-        //   case ClassTypes.TREE:
-        //     color = "#008000"; // Green
-        //     break;
-        //   case ClassTypes.THREESHADOW:
-        //     color = "#A9A9A9"; // Dark Gray
-        //     break;
-        // }
+        switch (classTag) {
+          case ClassTypes.BUILDING:
+            color = "#0000FF"; // Blue
+            break;
+          case ClassTypes.BUILDINGSHADOW:
+            color = "#808080"; // Gray
+            break;
+          case ClassTypes.TREE:
+            color = "#008000"; // Green
+            break;
+          case ClassTypes.THREESHADOW:
+            color = "#A9A9A9"; // Dark Gray
+            break;
+        }
 
         const opacity = state?.selected ? 0.9 : 0.25;
 
@@ -79,8 +72,10 @@ const Tool = () => {
         };
       });
     }
-  }, [annotations]);
+  }, [annotations.length]);
+  //------------------------------------------------------------------ //
 
+  //----------------- Capture selecting an annotation ----------------- //
   useEffect(() => {
     if (selected.length > 0) {
       setSelectedId(selected[0].annotation.id);
@@ -88,19 +83,25 @@ const Tool = () => {
       setSelectedId(null);
     }
   }, [selected]);
+  //------------------------------------------------------------------ //
 
+  //------ Update the class of the selected annotation --------------- //
   useEffect(() => {
-    if (anno && annotations && annotations.length > 0) {
+    console.log("gewek");
+    if (
+      annotations &&
+      annotations.length > 0 &&
+      annotations[annotations.length - 1].bodies.length === 0
+    ) {
       const newAnnotation = {
         ...annotations[annotations.length - 1],
-        body: [{ value: selectedClass }],
+        bodies: [{ value: selectedClass, purpose: "tagging" }],
       };
-      console.log("gfgfg");
-
       anno.updateAnnotation(newAnnotation);
     }
-  }, [annotations, anno]);
+  }, [selectedClass, annotations.length]);
 
+  //------ Delete the selected annotation --------------------------- //
   const handleDelete = () => {
     if (anno && selectedId) {
       console.log("Deleting annotation: " + selectedId);
@@ -108,96 +109,139 @@ const Tool = () => {
       setSelectedId(null);
     }
   };
+  //------------------------------------------------------------------ //
+
+  // const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+  //   const target = event.target;
+
+  //   if (target === null) {
+  //     throw new Error("target can not be null");
+  //   }
+  //   setSelectedClass(e.target.value as ClassTypes)
+  // };
 
   return (
     <Stack
       height={"100%"}
       sx={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignContent: "center",
         marginX: 8,
         pb: 8,
-        gap: 10,
         paddingX: 12,
       }}
     >
-      <Stack sx={{ gap: 2 }}>
-        <Typography variant="h2"> For the Annotation</Typography>
-        <Typography variant="h5">
-          Basically, on a table row hover, I want to make it set a background
-          color different from what it is currently doing.
+      {/* <Stack sx={{ gap: 2 }}>
+        <Typography variant="h2" sx={{ fontWeight: 500 }}>
+          Review Detected Shadows, Modify if Necessary
         </Typography>
-      </Stack>
+      </Stack> */}
 
-      <Stack sx={{ gap: 2 }}>
-        <div>
-          <ImageAnnotator containerClassName="annotation-layer" tool="polygon">
-            <img
-              src={Cover}
-              alt="Annotatable"
-              style={{
-                width: "100%",
-                borderRadius: 20,
-              }}
-            />
-          </ImageAnnotator>
-
-          <ImageAnnotationPopup popup={(props) => <div>Hello World</div>} />
-        </div>
-
+      <Stack
+        sx={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignContent: "center",
+          gap: 4,
+        }}
+      >
         <Stack
-          flexDirection={"row"}
-          justifyContent={"space-between"}
-          alignContent={"center"}
-          alignItems={"center"}
+          sx={{
+            gap: 2,
+          }}
         >
-          <FormControl sx={{ m: 1, minWidth: 200 }} size="small">
-            <InputLabel id="demo-select-small-label">Class</InputLabel>
-            <Select
-              labelId="demo-select-small-label"
-              id="demo-select-small"
-              value={selectedClass}
-              size="medium"
-              label="class"
-              onChange={(e) => setSelectedClass(e.target.value as ClassTypes)}
-              sx={{
-                borderRadius: 5,
-                "& legend": { display: "none" },
-                "& .MuiInputLabel-root": {
-                  display: "none",
-                },
-                borderSize: 3,
-              }}
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              <MenuItem value={"building"}>Building</MenuItem>
-              <MenuItem value={"building-shadow"}>Building Shadow </MenuItem>
-              <MenuItem value={"tree"}>Tree</MenuItem>
-              <MenuItem value={"tree-shadow"}>Tree Shadow</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Stack flexDirection={"row"} gap={2}>
-            <CustomIconButton
-              color="success"
-              action={() => console.log("Done!")}
-              icon={<DoneIcon fontSize="large" />}
-            />
-            <CustomIconButton
-              color="error"
-              action={() => handleDelete()}
-              icon={<CloseIcon fontSize="large" />}
-            />
-          </Stack>
+          <FactCard
+            description="Talk to our experts and read their research and analysis reports"
+            color="primary"
+          />
+          <FactCard
+            description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
+            color="inherit"
+          />
+          <FactCard
+            description="Get standardized views of data and insight across borders and
+languages to more easily compare and strategize"
+            color="inherit"
+          />
         </Stack>
-        <h3>Saved Annotations:</h3>
-        {/* <pre>{JSON.stringify(annotations, null, 2)}</pre> */}
 
-        <Typography>Selected Annotation </Typography>
-        <pre>{JSON.stringify(selected, null, 2)}</pre>
+        <Stack sx={{ gap: 2 }}>
+          <div>
+            <ImageAnnotator
+              containerClassName="annotation-layer"
+              tool="polygon"
+            >
+              <img
+                src={Cover}
+                alt="Annotatable"
+                style={{
+                  height: 400,
+                  width: 600,
+                  borderRadius: 20,
+                }}
+              />
+            </ImageAnnotator>
+
+            <ImageAnnotationPopup popup={(props) => <div>Hello World</div>} />
+          </div>
+
+          <Stack
+            flexDirection={"row"}
+            justifyContent={"space-between"}
+            alignContent={"center"}
+            alignItems={"center"}
+          >
+            <FormControl sx={{ minWidth: 200 }} size="small">
+              <Select
+                labelId="demo-select-small-label"
+                id="demo-select-small"
+                value={selectedClass}
+                size="small"
+                label="class"
+                onChange={(e) => setSelectedClass(e.target.value as ClassTypes)}
+                sx={{
+                  borderRadius: 5,
+                  p: 0,
+                  m: 0,
+                  minHeight: 0,
+                  "& legend": { display: "none" },
+                  borderSize: 3,
+                  "& .MuiInputLabel-root": {
+                    display: "none",
+                  },
+                }}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                <MenuItem value={"building"}>Building</MenuItem>
+                <MenuItem value={"building-shadow"}>Building Shadow</MenuItem>
+                <MenuItem value={"tree"}>Tree</MenuItem>
+                <MenuItem value={"tree-shadow"}>Tree Shadow</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Stack>
+              <ControlPanel />
+            </Stack>
+
+            <Stack flexDirection={"row"} gap={2}>
+              <CustomIconButton
+                color="success"
+                action={() => console.log("Done!")}
+                icon={<DoneIcon fontSize="large" />}
+              />
+              <CustomIconButton
+                color="error"
+                action={() => handleDelete()}
+                icon={<CloseIcon fontSize="large" />}
+              />
+            </Stack>
+          </Stack>
+          <h3>Saved Annotations:</h3>
+          <pre>{JSON.stringify(annotations, null, 2)}</pre>
+
+          <Typography>Selected Annotation </Typography>
+          <pre>{JSON.stringify(selected, null, 2)}</pre>
+        </Stack>
       </Stack>
     </Stack>
   );
