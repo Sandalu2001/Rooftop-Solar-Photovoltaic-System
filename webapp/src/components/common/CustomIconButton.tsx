@@ -1,7 +1,4 @@
-import { alpha, IconButton, SvgIconTypeMap } from "@mui/material";
-import { OverridableComponent } from "@mui/material/OverridableComponent";
-import { SvgIconComponent } from "@mui/icons-material";
-import React from "react";
+import { alpha, IconButton } from "@mui/material";
 
 interface CustomIconButtonProps {
   color: "inherit" | "error" | "success" | "clicked";
