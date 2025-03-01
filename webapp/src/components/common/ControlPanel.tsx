@@ -1,8 +1,5 @@
-import { Paper, Stack } from "@mui/material";
-import React from "react";
+import { Stack } from "@mui/material";
 import CustomIconButton from "./CustomIconButton";
-import DoneIcon from "@mui/icons-material/Done";
-import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/DeleteOutlineRounded";
 import UndoIcon from "@mui/icons-material/UndoRounded";
 import RedoIcon from "@mui/icons-material/RedoRounded";
