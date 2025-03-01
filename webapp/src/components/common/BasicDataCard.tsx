@@ -1,7 +1,4 @@
 import { Stack, Typography, alpha } from "@mui/material";
-import { Gauge, gaugeClasses } from "@mui/x-charts";
-import { useState } from "react";
-import e from "express";
 
 interface BasicDataCardInterface {
   color: "inherit" | "dark";
