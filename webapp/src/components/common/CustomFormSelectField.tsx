@@ -4,10 +4,8 @@ import {
   Grid,
   MenuItem,
   Select,
-  TextField,
   Typography,
 } from "@mui/material";
-import React from "react";
 import { CustomFormSelectFieldProps } from "../../types/componentInterfaces";
 
 const CustomFormSelectField = ({
