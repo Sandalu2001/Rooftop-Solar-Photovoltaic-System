@@ -1,8 +1,7 @@
 import { IconButton, Paper } from "@mui/material";
-import { Box, alpha } from "@mui/system";
+import { alpha } from "@mui/system";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import React from "react";
 import { ItemCounterProps } from "../../types/componentInterfaces";
 
 const ItemCounter = ({
