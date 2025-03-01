@@ -1,15 +1,11 @@
 import {
-  Grid,
   InputAdornment,
   Stack,
   TextField,
   Typography,
   alpha,
 } from "@mui/material";
-import React from "react";
-import SearchIcon from "@mui/icons-material/Search";
 import { CustomTextFieldProps } from "../../types/componentInterfaces";
-import { useField } from "formik";
 
 const CustomTextField = ({
   label,
