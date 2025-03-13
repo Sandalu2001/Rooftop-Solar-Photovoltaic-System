@@ -14,10 +14,8 @@ import Login from "./components/Login";
 import { AuthState } from "./types/componentInterfaces";
 import { useAppDispatch, useAppSelector } from "./slices/store";
 import { setAuthState } from "./slices/auth-slice";
-import DefaultComponent from "./components/annotation/Annotation";
 import { Annotorious } from "@annotorious/react";
-import CashierPanel from "./pages/analytics-dashboard/InventoryPanel";
-import AdminPanel from "./pages/tool/Tool";
+import Tool from "./pages/tool/Tool";
 import Home from "./pages/home/Home";
 
 Amplify.configure(outputs);
@@ -63,18 +61,18 @@ function App() {
         },
         {
           path: "/about",
-          element: <AdminPanel />,
+          element: <Tool />,
         },
         {
-          path: "/projects",
-          element: <CashierPanel />,
+          path: "/tool",
+          element: <Tool />,
         },
         {
-          path: "/contact",
-          element: <AdminPanel />,
+          path: "contact",
+          element: <Tool />,
         },
       ],
-      errorElement: <AdminPanel />,
+      errorElement: <Tool />,
     },
     {
       path: "/login",

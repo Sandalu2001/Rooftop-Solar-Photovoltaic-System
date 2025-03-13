@@ -15,10 +15,6 @@ export interface TabProps {
   component: React.ReactNode;
 }
 
-export interface NavBarProps {
-  commonPageTabs: TabProps[];
-}
-
 export interface OrderedProductCardProps {
   product: ProductsInCart;
 }

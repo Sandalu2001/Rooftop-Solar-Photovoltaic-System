@@ -1,7 +1,4 @@
 import { Stack, Typography, alpha } from "@mui/material";
-import { Gauge, gaugeClasses } from "@mui/x-charts";
-import { useState } from "react";
-import e from "express";
 
 interface FactCardInterface {
   color: "inherit" | "primary";
@@ -10,7 +7,7 @@ interface FactCardInterface {
 
 const FactCard = ({ color, description }: FactCardInterface) => {
   return (
-    <Stack gap={2} flex={1}>
+    <Stack gap={2}>
       <Stack
         sx={{
           background:

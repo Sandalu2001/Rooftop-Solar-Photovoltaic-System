@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-rooftop-dev-b4dde-authRole",
+      "UnauthRoleArn": "arn:aws:iam::492041043784:role/amplify-rooftop-dev-b4dde-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::492041043784:role/amplify-rooftop-dev-b4dde-authRole",
+      "Region": "eu-north-1",
+      "DeploymentBucketName": "amplify-rooftop-dev-b4dde-deployment",
+      "UnauthRoleName": "amplify-rooftop-dev-b4dde-unauthRole",
+      "StackName": "amplify-rooftop-dev-b4dde",
+      "StackId": "arn:aws:cloudformation:eu-north-1:492041043784:stack/amplify-rooftop-dev-b4dde/7e2c0de0-f8ff-11ef-a4f8-069a10ae7905",
+      "AmplifyAppId": "dnmgwqbrun5az"
+    },
+    "categories": {
+      "auth": {
+        "rooftope1f7f144": {}
+      }
+    }
+  }
+}

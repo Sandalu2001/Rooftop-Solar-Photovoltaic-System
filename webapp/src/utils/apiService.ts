@@ -11,6 +11,7 @@ export class APIService {
     fetchAuthSession()
       .then((resp) => {
         APIService._accessToken = resp!.tokens!.accessToken;
+        console.log(resp!.tokens!.idToken);
       })
       .catch((error) => {
         console.log(error);
