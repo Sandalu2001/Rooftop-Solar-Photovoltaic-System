@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
-import inventoryReducer from "./inventory-slice/index";
+import inventoryReducer from "./solar-slice/index";
 import cashierReducer from "./cashier-slice/index";
 import authReducer from "./auth-slice/index";
 
