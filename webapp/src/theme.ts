@@ -36,7 +36,7 @@ export const theme = createTheme({
       fontSize: 70,
     },
     h2: {
-      fontSize: 50,
+      fontSize: 59,
     },
 
     body1: {
