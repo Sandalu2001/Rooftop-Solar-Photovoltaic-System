@@ -4,11 +4,14 @@ from werkzeug.utils import secure_filename
 from model.detectron_model import DetectronModel
 from model.centroid_model import BuildingShadowMatcher
 from model.data_type_conversion_model import DataTypeConversionModel
+import ee
 
 image_controller = Blueprint("image_controller", __name__)
 model = DetectronModel()
 matcher = BuildingShadowMatcher()
 converter = DataTypeConversionModel()
+
+ee.Initialize(project='ee-final-year-project-2001')
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
@@ -104,3 +107,29 @@ def convert():
         return send_file(abs_result_path, mimetype="image/png")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@image_controller.route("/satellite-image", methods=["GET"])
+def get_satellite_data():
+    try:
+        point = ee.Geometry.Point([-122.4194, 37.7749])  # San Francisco
+
+        # Fetch the image collection
+        collection = ee.ImageCollection('COPERNICUS/S2') \
+            .filterDate('2023-01-01', '2023-12-31') \
+            .sort('system:time_start', False) \
+        
+        # # Check if any images exist
+        # count = collection.size().getInfo()  # Convert to Python int
+        # if count == 0:
+        #     return jsonify({'error': 'No images found for this location'}), 404
+
+        # image = collection.first()  # Get the first image
+
+        print("Fetching image")
+
+        # Generate thumbnail URL
+        url = collection.getThumbURL({'min': 0, 'max': 3000, 'bands': ['B4', 'B3', 'B2']})
+        return jsonify({'image_url': url})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
