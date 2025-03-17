@@ -1,15 +1,20 @@
 import {
+  alpha,
+  Button,
   FormControl,
+  IconButton,
   MenuItem,
+  Paper,
+  Popover,
   Select,
   Stack,
   Typography,
 } from "@mui/material";
 import React, { ChangeEvent, useEffect, useState } from "react";
-import Cover from "../../assets/images/roof.png";
+import Cover from "../../../assets/images/roof.png";
 import DoneIcon from "@mui/icons-material/Done";
 import CloseIcon from "@mui/icons-material/Close";
-import CustomIconButton from "../../components/common/CustomIconButton";
+import CustomIconButton from "../../../components/common/CustomIconButton";
 import {
   AnnotationState,
   ImageAnnotation,
@@ -20,8 +25,11 @@ import {
   useSelection,
 } from "@annotorious/react";
 import "@annotorious/react/annotorious-react.css";
-import FactCard from "../../components/common/FactCard";
-import ControlPanel from "../../components/common/ControlPanel";
+import FactCard from "../../../components/common/FactCard";
+import ControlPanel from "../../../components/common/ControlPanel";
+import { StepperInterface } from "../../../types/componentInterfaces";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 enum ClassTypes {
   BUILDING = "building",
@@ -29,7 +37,7 @@ enum ClassTypes {
   TREE = "tree",
   THREESHADOW = "tree-shadow",
 }
-const Tool = () => {
+const Tool = ({ setActiveStep }: StepperInterface) => {
   const [selectedClass, setSelectedClass] = useState<ClassTypes>(
     ClassTypes.BUILDING
   );
@@ -38,6 +46,16 @@ const Tool = () => {
   const anno = useAnnotator();
   const { selected } = useSelection(); // Get the selected annotation
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  //-------FOr the Fast cards ----------------- //
+  const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
+  const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handlePopoverClose = () => {
+    setAnchorEl(null);
+  };
+  const open = Boolean(anchorEl);
 
   //----------------- Styling the annotations ----------------- //
   useEffect(() => {
@@ -123,56 +141,32 @@ const Tool = () => {
   return (
     <Stack
       height={"100%"}
-      gap={4}
       sx={{
-        marginX: 8,
-        pb: 8,
-        paddingX: 12,
+        alignContent: "center",
+        paddingY: 8,
+        gap: 2,
       }}
     >
-      <Stack
-        sx={{
-          gap: 2,
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-        }}
-      >
-        <Typography variant="h2" sx={{ fontWeight: 500 }}>
-          Review Detected Shadows, Modify if Necessary
-        </Typography>
-      </Stack>
-
       <Stack
         sx={{
           flexDirection: "row",
           justifyContent: "space-between",
           alignContent: "center",
-          gap: 4,
+          alignItems: "center",
+          gap: 2,
+          position: "relative",
         }}
       >
         <Stack
-          flex={2}
           sx={{
-            gap: 2,
+            flex: 1.2,
+            borderRadius: 5,
+            background: "none",
+            display: "flex",
+            gap: 4,
+            flexDirection: "column",
           }}
         >
-          <FactCard
-            description="Talk to our experts and read their research and analysis reports"
-            color="primary"
-          />
-          <FactCard
-            description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
-            color="inherit"
-          />
-          <FactCard
-            description="Get standardized views of data and insight across borders and
-languages to more easily compare and strategize"
-            color="inherit"
-          />
-        </Stack>
-
-        <Stack flex={2} sx={{ gap: 2 }}>
           <div>
             <ImageAnnotator
               containerClassName="annotation-layer"
@@ -182,8 +176,8 @@ languages to more easily compare and strategize"
                 src={Cover}
                 alt="Annotatable"
                 style={{
-                  height: 533,
-                  width: 800,
+                  height: "100%",
+                  width: "100%",
                   borderRadius: 20,
                 }}
               />
@@ -197,6 +191,7 @@ languages to more easily compare and strategize"
             justifyContent={"space-between"}
             alignContent={"center"}
             alignItems={"center"}
+            sx={{ pt: 0 }}
           >
             <FormControl sx={{ minWidth: 200 }} size="small">
               <Select
@@ -232,25 +227,101 @@ languages to more easily compare and strategize"
               <ControlPanel />
             </Stack>
 
-            <Stack flexDirection={"row"} gap={2}>
-              <CustomIconButton
-                color="success"
-                action={() => console.log("Done!")}
-                icon={<DoneIcon fontSize="large" />}
-              />
-              <CustomIconButton
-                color="error"
-                action={() => handleDelete()}
-                icon={<CloseIcon fontSize="large" />}
-              />
+            <Stack flexDirection={"row"}>
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                onClick={() => setActiveStep(1)}
+                sx={{
+                  display: "flex",
+                  alignSelf: "end",
+                  borderRadius: 2,
+                  boxShadow: "none",
+                  "&:hover .MuiSvgIcon-root": {
+                    position: "relative",
+                    animation: "moveIcon 0.4s infinite alternate ease-in-out",
+                  },
+                  "@keyframes moveIcon": {
+                    "0%": { transform: "translateX(0)" },
+                    "100%": { transform: "translateX(8px)" },
+                  },
+                }}
+                endIcon={<ArrowForwardIcon />}
+              >
+                Get the insights
+              </Button>
             </Stack>
           </Stack>
-          <h3>Saved Annotations:</h3>
+          {/* <h3>Saved Annotations:</h3>
           <pre>{JSON.stringify(annotations, null, 2)}</pre>
 
           <Typography>Selected Annotation </Typography>
-          <pre>{JSON.stringify(selected, null, 2)}</pre>
+          <pre>{JSON.stringify(selected, null, 2)}</pre> */}
         </Stack>
+
+        <Popover
+          id="mouse-over-popover"
+          sx={{ pointerEvents: "none" }}
+          open={open}
+          anchorEl={anchorEl}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "left",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "left",
+          }}
+          onClose={handlePopoverClose}
+        >
+          <Stack
+            flex={1}
+            sx={{
+              gap: 2,
+              maxWidth: 400,
+              p: 2,
+              borderRadius: 5,
+            }}
+          >
+            <FactCard
+              description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
+              color="inherit"
+            />
+            <FactCard
+              description="Get standardized views of data and insight across borders and
+languages to more easily compare and strategize"
+              color="inherit"
+            />
+            <FactCard
+              description="Talk to our experts and read their research and analysis reports"
+              color="primary"
+            />
+            <FactCard
+              description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
+              color="inherit"
+            />
+          </Stack>
+        </Popover>
+
+        <IconButton
+          size="large"
+          color="inherit"
+          sx={{
+            position: "absolute",
+            top: 20,
+            left: 20,
+            color: "white",
+            background: (theme) => alpha(theme.palette.common.black, 0.8),
+            "&:hover": {
+              background: (theme) => alpha(theme.palette.common.black, 0.05),
+            },
+          }}
+          onMouseEnter={handlePopoverOpen}
+          onMouseLeave={handlePopoverClose}
+        >
+          <MoreVertIcon />
+        </IconButton>
       </Stack>
     </Stack>
   );
