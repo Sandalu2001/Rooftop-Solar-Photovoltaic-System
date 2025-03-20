@@ -15,8 +15,9 @@ import { AuthState } from "./types/componentInterfaces";
 import { useAppDispatch, useAppSelector } from "./slices/store";
 import { setAuthState } from "./slices/auth-slice";
 import { Annotorious } from "@annotorious/react";
-import Tool from "./pages/tool/Tool";
+import Tool from "./pages/tool/index";
 import Home from "./pages/home/Home";
+import MapComponent from "./pages/tool/Map";
 
 Amplify.configure(outputs);
 
@@ -61,7 +62,7 @@ function App() {
         },
         {
           path: "/about",
-          element: <Tool />,
+          element: <MapComponent />,
         },
         {
           path: "/tool",

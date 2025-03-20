@@ -4,11 +4,14 @@ from werkzeug.utils import secure_filename
 from model.detectron_model import DetectronModel
 from model.centroid_model import BuildingShadowMatcher
 from model.data_type_conversion_model import DataTypeConversionModel
+import ee
 
 image_controller = Blueprint("image_controller", __name__)
 model = DetectronModel()
 matcher = BuildingShadowMatcher()
 converter = DataTypeConversionModel()
+
+ee.Initialize(project='ee-final-year-project-2001')
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
@@ -104,3 +107,45 @@ def convert():
         return send_file(abs_result_path, mimetype="image/png")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@image_controller.route("/satellite-image", methods=["GET"])
+def get_satellite_data():
+    try:
+        point = ee.Geometry.Point([-122.4194, 37.7749]).buffer(500)  # San Francisco
+
+        # Fetch the image collection
+        collection =  (
+            ee.ImageCollection("COPERNICUS/S2")
+            .filterBounds(point)
+            .filterDate("2023-01-01", "2023-12-31")
+            .sort("system:time_start", False)
+            .first()
+        )
+
+        vis_params = {
+            "bands": ["B4", "B3", "B2"],  # RGB bands
+            "min": 0,
+            "max": 3000,
+            "dimensions": 1024
+        }
+     
+        # # Check if any images exist
+        # count = collection.size().getInfo()  # Convert to Python int
+        # if count == 0:
+        #     return jsonify({'error': 'No images found for this location'}), 404
+
+        # image = collection.first()  # Get the first image
+
+        print("Fetching image")
+
+         # Generate Map Tile URL (For Leaflet / React)
+        map_id = collection.getMapId(vis_params)
+        return jsonify({
+            "tile_url": map_id["tile_fetcher"].url_format
+        })
+        # # Generate thumbnail URL
+        # url = collection.getThumbURL({'min': 0, 'max': 3000, 'bands': ['B4', 'B3', 'B2']})
+        # return jsonify({'image_url': url})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

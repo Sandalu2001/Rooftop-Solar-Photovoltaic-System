@@ -144,3 +144,7 @@ export enum AuthState {
   LOGOUT = "logout",
   LOADING = "loading",
 }
+
+export interface StepperInterface {
+  setActiveStep: (step: number) => void;
+}

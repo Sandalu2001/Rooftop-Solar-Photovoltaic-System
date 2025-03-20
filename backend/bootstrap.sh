@@ -14,7 +14,6 @@ echo "Current ENV: $(conda info --envs | grep '*')"
 
 # Upgrade pip and install dependencies
 pip install --upgrade pip
-pip install -r requirements.txt
 
 # Run setup.py and install dependencies correctly
 python -c "import distutils.core; dist = distutils.core.run_setup('detectron2/setup.py'); \
