@@ -12,5 +12,6 @@ export const AppConfig = {
     getInventoryProducts: ServiceBaseUrl + "/products/inventory",
     addProduct: ServiceBaseUrl + "/products",
     makeOrder: ServiceBaseUrl + "/orders",
+    addImage: ServiceBaseUrl + "/predict",
   },
 };

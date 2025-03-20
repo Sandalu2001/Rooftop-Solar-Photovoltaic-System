@@ -123,17 +123,25 @@ const Tool = () => {
   return (
     <Stack
       height={"100%"}
+      gap={4}
       sx={{
         marginX: 8,
         pb: 8,
         paddingX: 12,
       }}
     >
-      {/* <Stack sx={{ gap: 2 }}>
+      <Stack
+        sx={{
+          gap: 2,
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+        }}
+      >
         <Typography variant="h2" sx={{ fontWeight: 500 }}>
           Review Detected Shadows, Modify if Necessary
         </Typography>
-      </Stack> */}
+      </Stack>
 
       <Stack
         sx={{
@@ -144,6 +152,7 @@ const Tool = () => {
         }}
       >
         <Stack
+          flex={2}
           sx={{
             gap: 2,
           }}
@@ -163,7 +172,7 @@ languages to more easily compare and strategize"
           />
         </Stack>
 
-        <Stack sx={{ gap: 2 }}>
+        <Stack flex={2} sx={{ gap: 2 }}>
           <div>
             <ImageAnnotator
               containerClassName="annotation-layer"
@@ -173,8 +182,8 @@ languages to more easily compare and strategize"
                 src={Cover}
                 alt="Annotatable"
                 style={{
-                  height: 400,
-                  width: 600,
+                  height: 533,
+                  width: 800,
                   borderRadius: 20,
                 }}
               />
