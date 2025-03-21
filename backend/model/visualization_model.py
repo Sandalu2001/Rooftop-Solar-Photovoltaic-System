@@ -23,8 +23,6 @@ class Visualization():
         self.process_images()
 
     def display_image(self, image_id, show_polys=True, show_bbox=True, show_labels=True, show_crowds=True, use_url=False):
-        print('Image:')
-        print('======')
         if image_id == 'random':
             image_id = random.choice(list(self.images.keys()))
         
