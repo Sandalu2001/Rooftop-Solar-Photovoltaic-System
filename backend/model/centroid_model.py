@@ -6,6 +6,8 @@ import os
 from detectron2.utils.visualizer import Visualizer
 from detectron2.structures import Instances
 from model.detectron_model import DetectronModel  # Import your existing model
+from math import sqrt
+from PIL import Image, ImageDraw
 
 class BuildingShadowMatcher:
     def __init__(self):
@@ -116,3 +118,192 @@ class BuildingShadowMatcher:
         matches = self.match_buildings_to_shadows(buildings, shadows)
         
         return self.visualize_matches(image_path, outputs["instances"].to("cpu"), matches)
+    
+
+    # ------------------ NEW VERSION ------------------ #
+    def get_category_ids(self, coco_data, category_names):
+        """Gets category IDs for given category names.
+
+        Args:
+            coco_data (dict): COCO annotation dictionary.
+            category_names (list): List of category names (e.g., ['building', 'shadow']).
+
+        Returns:
+            dict: Dictionary mapping category names to their IDs.
+                    Returns None for a category if not found.
+        """
+        category_ids = {}
+        for cat_info in coco_data.get('categories', []):
+            if cat_info['name'] in category_names:
+                category_ids[cat_info['name']] = cat_info['id']
+        return category_ids
+    
+    def calculate_centroid(self,segmentation):
+        """Calculates the centroid of a polygon segmentation.
+
+        Args:
+            segmentation (list): COCO segmentation format (list of lists of floats).
+                                Assumes a single polygon for simplicity.
+
+        Returns:
+            tuple: (centroid_x, centroid_y) or None if segmentation is invalid.
+        """
+        if not segmentation or not segmentation[0]:
+            return None  # Handle empty or invalid segmentation
+
+        polygon = np.array(segmentation[0]).reshape(-1, 2)  # Reshape to (n_points, 2)
+        centroid_x = np.mean(polygon[:, 0])
+        centroid_y = np.mean(polygon[:, 1])
+        return centroid_x, centroid_y
+    
+    def calculate_distance(self, centroid1, centroid2):
+        """Calculates Euclidean distance between two centroids.
+
+        Args:
+            centroid1 (tuple): (x, y) centroid of the first object.
+            centroid2 (tuple): (x, y) centroid of the second object.
+
+        Returns:
+            float: Euclidean distance.
+        """
+        if centroid1 is None or centroid2 is None:
+            return float('inf')  # Return infinity if either centroid is invalid
+        x1, y1 = centroid1
+        x2, y2 = centroid2
+        return sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    
+    def find_building_shadow_pairs(self,coco_data, distance_threshold=100):
+        """Finds building and corresponding shadow annotation pairs in a COCO JSON and returns in COCO format.
+
+        Assumptions for correspondence:
+        - Annotations are in the same image.
+        - Shadows are spatially close to buildings (within distance_threshold).
+        - Simplest correspondence: For each building, find the closest shadow within the threshold.
+
+        Args:
+            coco_data (dict): COCO annotation dictionary.
+            distance_threshold (int, optional): Maximum distance between centroids
+                                            to consider a building and shadow as corresponding.
+                                            Defaults to 100 pixels. Adjust based on image size
+                                            and object scale in your dataset.
+
+        Returns:
+            dict: A COCO format dictionary containing annotations representing building-shadow pairs.
+                 The 'annotations' list in the returned dictionary will contain modified building and shadow
+                 annotations, each linked by a 'pair_id'.
+        """
+
+        category_ids = self.get_category_ids(coco_data, ['Building', 'Shadow'])
+
+        if 'Building' not in category_ids or 'Shadow' not in category_ids:
+            print("Error: 'building' or 'shadow' categories not found in COCO annotations.")
+            return {}
+
+        building_category_id = category_ids['Building']
+        shadow_category_id = category_ids['Shadow']
+
+        image_annotations = {}
+        for annotation in coco_data.get('annotations', []):
+            image_id = annotation['image_id']
+            if image_id not in image_annotations:
+                image_annotations[image_id] = []
+            image_annotations[image_id].append(annotation)
+
+        coco_pairs_data = {
+            'images': coco_data.get('images', []),
+            'categories': coco_data.get('categories', []),
+            'annotations': [] # Initialize empty annotations list for pairs
+        }
+        annotation_id_counter = 1 # Counter for new annotation IDs (if needed, though we can reuse original)
+        pair_id_counter = 1 # Counter for pair IDs
+
+        for image_id, annotations_in_image in image_annotations.items():
+            building_annotations = [ann for ann in annotations_in_image if ann['category_id'] == building_category_id]
+            shadow_annotations = [ann for ann in annotations_in_image if ann['category_id'] == shadow_category_id]
+
+            if not building_annotations or not shadow_annotations:
+                continue  # No buildings or shadows in this image, skip
+
+            for building_ann in building_annotations:
+                # Calculate centroid of building annotation
+                building_centroid = self.calculate_centroid(building_ann.get('segmentation'))
+                if building_centroid is None:
+                    continue # Skip if building segmentation is invalid
+
+                closest_shadow_ann = None
+                min_distance = float('inf')
+
+                # Find the closest shadow to the building
+                for shadow_ann in shadow_annotations:
+                    shadow_centroid = self.calculate_centroid(shadow_ann.get('segmentation'))
+                    if shadow_centroid is None:
+                        continue # Skip if shadow segmentation is invalid
+
+                    distance = self.calculate_distance(building_centroid, shadow_centroid)
+                    if distance < min_distance and distance <= distance_threshold:
+                        min_distance = distance
+                        closest_shadow_ann = shadow_ann
+
+                if closest_shadow_ann:
+                    building_ann['pair_id'] = pair_id_counter # Add pair_id to building annotation
+                    closest_shadow_ann['pair_id'] = pair_id_counter # Add pair_id to shadow annotation
+                    coco_pairs_data['annotations'].append(building_ann) # Add building annotation to coco_pairs_data
+                    coco_pairs_data['annotations'].append(closest_shadow_ann) # Add shadow annotation to coco_pairs_data
+                    pair_id_counter += 1
+                    # Optionally remove paired shadow to prevent re-pairing (depends on desired logic)
+                    # shadow_annotations.remove(closest_shadow_ann) # Be careful modifying list while iterating
+
+        return coco_pairs_data
+    
+    def visualize_building_shadow_pairs(self, coco_pairs_data, image_dir, output_dir="annotated_images"):
+        """Visualizes building-shadow pairs on images and saves them to output_dir.
+
+        Args:
+            coco_pairs_data (dict): COCO format dictionary with paired annotations.
+            image_dir (str): Path to the directory containing original images.
+            output_dir (str, optional): Directory to save annotated images. Defaults to "annotated_images".
+        """
+        if not image_dir:
+            print("Error: image_dir must be provided for visualization.")
+            return
+
+        os.makedirs(output_dir, exist_ok=True) # Create output directory if it doesn't exist
+
+        annotations_by_image = {}
+        for ann in coco_pairs_data['annotations']:
+            image_id = ann['image_id']
+            if image_id not in annotations_by_image:
+                annotations_by_image[image_id] = []
+            annotations_by_image[image_id].append(ann)
+
+        for image_id, annotations in annotations_by_image.items():
+            image_info = next((img for img in coco_pairs_data['images'] if img['id'] == image_id), None)
+            if image_info:
+                image_path = os.path.join(image_dir, image_info['file_name'])
+                try:
+                    image = Image.open(image_path).convert("RGB")
+                    draw = ImageDraw.Draw(image)
+                except FileNotFoundError:
+                    print(f"Warning: Image file not found: {image_path}. Skipping visualization for image ID {image_id}")
+                    continue
+            else:
+                print(f"Warning: Image info not found for image ID {image_id}. Skipping visualization.")
+                continue
+
+            for ann in annotations:
+                if 'segmentation' in ann and ann['segmentation']:
+                    polygon = np.array(ann['segmentation'][0]).reshape(-1, 2).tolist()
+                    if ann['category_id'] == self.get_category_ids(coco_pairs_data, ['Building'])['Building']:
+                        color = (255, 0, 0)  # Red for building
+                    elif ann['category_id'] == self.get_category_ids(coco_pairs_data, ['Shadow'])['Shadow']:
+                        color = (0, 0, 255)  # Blue for shadow
+                    else:
+                        color = (0, 255, 0) # Green for others
+
+                    draw.polygon(polygon, outline=color, fill=color)
+
+            # Save the visualized image to the output directory
+            output_filename = f"{os.path.splitext(image_info['file_name'])[0]}_annotated.jpg" # Add "_annotated" to filename
+            output_path = os.path.join(output_dir, output_filename)
+            image.save(output_path, "JPEG") # Save as JPEG
+            print(f"Saved annotated image: {output_path}")
