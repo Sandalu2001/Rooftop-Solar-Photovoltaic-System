@@ -59,7 +59,7 @@ def match():
         return jsonify({"error": "Empty filename"}), 400
 
     # Save uploaded image
-    filename = secure_filename(file.filename) # Returns a secure file name 
+    filename = secure_filename(file.filename) 
     img_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(img_path)
 
@@ -94,17 +94,17 @@ def convert():
     file.save(img_path)
 
     try:
-        coco_output, output_path = converter.convert(img_path,1)
+        coco_output = converter.convert(img_path,1)
+        output_path = converter.visualize_coco_annotations(img_path, coco_output)
         
          # Convert to absolute path
         abs_result_path = os.path.abspath(output_path)
-        print(f"Sending file: {abs_result_path}")
 
         if not os.path.exists(abs_result_path):
             return jsonify({"error": f"File not found: {abs_result_path}"}), 500
         
         # return coco_output
-        return send_file(abs_result_path, mimetype="image/png")
+        return jsonify({"coco_output": coco_output})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -119,6 +119,7 @@ def get_satellite_data():
             .filterBounds(point)
             .filterDate("2023-01-01", "2023-12-31")
             .sort("system:time_start", False)
+            
             .first()
         )
 
@@ -149,3 +150,40 @@ def get_satellite_data():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
+@image_controller.route('/centroid',methods=['POST'])
+def get_centroid():
+    if "image" not in request.files:
+        return jsonify({"error": "No image uploaded"}), 400
+
+    file = request.files["image"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    # Save uploaded image
+    filename = secure_filename(file.filename) 
+    img_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(img_path)
+
+    try:
+        coco_output = converter.convert(img_path,1)
+        shadowPairs = matcher.find_building_shadow_pairs(coco_output)
+    
+
+        
+         # Convert to absolute path
+        # abs_result_path = os.path.abspath(result_path)
+        # print(f"Sending file: {abs_result_path}")
+
+        # if not os.path.exists(abs_result_path):
+        #     return jsonify({"error": f"File not found: {abs_result_path}"}), 500
+        
+        # return send_file(abs_result_path, mimetype="image/png")
+
+        if shadowPairs is None:
+            return jsonify({"error": "No shadow pairs found"}), 404
+
+        return jsonify({"shadowPairs": shadowPairs})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
