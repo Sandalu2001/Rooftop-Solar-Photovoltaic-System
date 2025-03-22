@@ -168,22 +168,22 @@ def get_centroid():
 
     try:
         coco_output = converter.convert(img_path,1)
-        shadowPairs = matcher.find_building_shadow_pairs(coco_output)
-    
-
-        
+        updated_coco_output = matcher.find_building_shadow_pairs(coco_output)
+        # print(updated_coco_output)
+        result_path = matcher.visualize_building_shadow_pairs(img_path, updated_coco_output,"uploads")
+        print(result_path)
          # Convert to absolute path
-        # abs_result_path = os.path.abspath(result_path)
-        # print(f"Sending file: {abs_result_path}")
+        abs_result_path = os.path.abspath(result_path)
+        print(f"Sending file: {abs_result_path}")
 
-        # if not os.path.exists(abs_result_path):
-        #     return jsonify({"error": f"File not found: {abs_result_path}"}), 500
+        if not os.path.exists(abs_result_path):
+            return jsonify({"error": f"File not found: {abs_result_path}"}), 500
         
-        # return send_file(abs_result_path, mimetype="image/png")
+        return send_file(abs_result_path, mimetype="image/png")
 
-        if shadowPairs is None:
-            return jsonify({"error": "No shadow pairs found"}), 404
+        # if shadowPairs is None:
+        #     return jsonify({"error": "No shadow pairs found"}), 404
 
-        return jsonify({"shadowPairs": shadowPairs})
+        # return jsonify({"shadowPairs": shadowPairs})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
