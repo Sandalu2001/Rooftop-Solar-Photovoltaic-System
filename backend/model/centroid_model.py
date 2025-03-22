@@ -255,7 +255,7 @@ class BuildingShadowMatcher:
 
         return coco_pairs_data
     
-    def visualize_building_shadow_pairs(self, coco_pairs_data, image_dir, output_dir="annotated_images"):
+    def visualize_building_shadow_pairs(self, coco_pairs_data, image_path, output_dir="results"):
         """Visualizes building-shadow pairs on images and saves them to output_dir.
 
         Args:
@@ -263,11 +263,8 @@ class BuildingShadowMatcher:
             image_dir (str): Path to the directory containing original images.
             output_dir (str, optional): Directory to save annotated images. Defaults to "annotated_images".
         """
-        if not image_dir:
-            print("Error: image_dir must be provided for visualization.")
-            return
-
-        os.makedirs(output_dir, exist_ok=True) # Create output directory if it doesn't exist
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True) 
 
         annotations_by_image = {}
         for ann in coco_pairs_data['annotations']:
@@ -277,17 +274,11 @@ class BuildingShadowMatcher:
             annotations_by_image[image_id].append(ann)
 
         for image_id, annotations in annotations_by_image.items():
-            image_info = next((img for img in coco_pairs_data['images'] if img['id'] == image_id), None)
-            if image_info:
-                image_path = os.path.join(image_dir, image_info['file_name'])
-                try:
-                    image = Image.open(image_path).convert("RGB")
-                    draw = ImageDraw.Draw(image)
-                except FileNotFoundError:
-                    print(f"Warning: Image file not found: {image_path}. Skipping visualization for image ID {image_id}")
-                    continue
-            else:
-                print(f"Warning: Image info not found for image ID {image_id}. Skipping visualization.")
+            try:
+                image = Image.open(image_path).convert("RGB")
+                draw = ImageDraw.Draw(image)
+            except FileNotFoundError:
+                print(f"Warning: Image file not found: {image_path}. Skipping visualization for image ID {image_id}")
                 continue
 
             for ann in annotations:
@@ -307,3 +298,4 @@ class BuildingShadowMatcher:
             output_path = os.path.join(output_dir, output_filename)
             image.save(output_path, "JPEG") # Save as JPEG
             print(f"Saved annotated image: {output_path}")
+            return output_path
