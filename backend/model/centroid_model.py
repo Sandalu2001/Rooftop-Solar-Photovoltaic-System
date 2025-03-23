@@ -254,48 +254,56 @@ class BuildingShadowMatcher:
                     # shadow_annotations.remove(closest_shadow_ann) # Be careful modifying list while iterating
 
         return coco_pairs_data
-    
+
     def visualize_building_shadow_pairs(self, coco_pairs_data, image_path, output_dir="results"):
-        """Visualizes building-shadow pairs on images and saves them to output_dir.
+        """Visualizes building-shadow pairs on a single image and saves it. (Single Image Version)
 
         Args:
-            coco_pairs_data (dict): COCO format dictionary with paired annotations.
-            image_dir (str): Path to the directory containing original images.
-            output_dir (str, optional): Directory to save annotated images. Defaults to "annotated_images".
+            coco_pairs_data (dict): COCO format dictionary with paired annotations for ONE image.
+            image_path (str): Path to the original image.
+            output_dir (str, optional): Directory to save annotated image. Defaults to "results".
         """
         # Create output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True) 
+        os.makedirs(output_dir, exist_ok=True)
 
-        annotations_by_image = {}
-        for ann in coco_pairs_data['annotations']:
-            image_id = ann['image_id']
-            if image_id not in annotations_by_image:
-                annotations_by_image[image_id] = []
-            annotations_by_image[image_id].append(ann)
+        try:
+            image = Image.open(image_path).convert("RGB")
+            draw = ImageDraw.Draw(image)
+        except FileNotFoundError:
+            print(f"Warning: Image file not found: {image_path}. Skipping visualization.")
+            return  # Exit if image not found
 
-        for image_id, annotations in annotations_by_image.items():
-            try:
-                image = Image.open(image_path).convert("RGB")
-                draw = ImageDraw.Draw(image)
-            except FileNotFoundError:
-                print(f"Warning: Image file not found: {image_path}. Skipping visualization for image ID {image_id}")
-                continue
+        annotations = coco_pairs_data.get('annotations', []) # Get annotations, handle if missing
 
-            for ann in annotations:
-                if 'segmentation' in ann and ann['segmentation']:
-                    polygon = np.array(ann['segmentation'][0]).reshape(-1, 2).tolist()
-                    if ann['category_id'] == self.get_category_ids(coco_pairs_data, ['Building'])['Building']:
-                        color = (255, 0, 0)  # Red for building
-                    elif ann['category_id'] == self.get_category_ids(coco_pairs_data, ['Shadow'])['Shadow']:
-                        color = (0, 0, 255)  # Blue for shadow
-                    else:
-                        color = (0, 255, 0) # Green for others
+        for ann in annotations:
+            if 'segmentation' not in ann or not ann['segmentation']:
+                print(f"Warning: Missing segmentation data for annotation {ann}. Skipping...")
+                continue  # Skip annotations with no segmentation data
 
-                    draw.polygon(polygon, outline=color, fill=color)
+            polygon = np.array(ann['segmentation'][0]).reshape(-1, 2).tolist()
+            flat_polygon = [coord for point in polygon for coord in point]  # Flatten to [x1, y1, x2, y2, ...]
 
-            # Save the visualized image to the output directory
-            output_filename = f"{os.path.splitext(image_info['file_name'])[0]}_annotated.jpg" # Add "_annotated" to filename
-            output_path = os.path.join(output_dir, output_filename)
-            image.save(output_path, "JPEG") # Save as JPEG
-            print(f"Saved annotated image: {output_path}")
-            return output_path
+            # Debugging - Print annotation details
+            print(f"Annotation ID: {ann.get('id', 'N/A')}, Category ID: {ann['category_id']}")
+
+            # Assign colors based on category
+            category_ids = self.get_category_ids(coco_pairs_data, ['Building', 'Shadow'])
+            if ann['category_id'] == category_ids.get('Building'):
+                color = (255, 0, 0)  # Red for building
+            elif ann['category_id'] == category_ids.get('Shadow'):
+                color = (0, 0, 255)  # Blue for shadow
+            else:
+                color = (0, 255, 0)  # Green for others
+
+            draw.polygon(flat_polygon, outline=color, fill=color)
+
+        # Save the visualized image to the output directory
+        base_filename = os.path.splitext(os.path.basename(image_path))[0]
+        output_filename = f"{base_filename}_annotated.jpg"
+        output_path = os.path.join(output_dir, output_filename)
+            
+        image.save(output_path, "JPEG")            
+        print(f"Saved annotated image: {output_path}")
+        return output_path
+
+            
