@@ -170,7 +170,7 @@ def get_centroid():
         coco_output = converter.convert(img_path,1)
         updated_coco_output = matcher.find_building_shadow_pairs(coco_output)
         # print(updated_coco_output)
-        result_path = matcher.visualize_building_shadow_pairs(img_path, updated_coco_output,"uploads")
+        result_path = matcher.visualize_building_shadow_pairs(updated_coco_output,img_path,"uploads")
         print(result_path)
          # Convert to absolute path
         abs_result_path = os.path.abspath(result_path)
