@@ -7,6 +7,7 @@ from detectron2.utils.visualizer import Visualizer
 from detectron2.structures import Instances
 from model.detectron_model import DetectronModel  # Import your existing model
 from math import sqrt
+import math
 from PIL import Image, ImageDraw
 
 class BuildingShadowMatcher:
@@ -305,5 +306,79 @@ class BuildingShadowMatcher:
         image.save(output_path, "JPEG")            
         print(f"Saved annotated image: {output_path}")
         return output_path
+    
+    def calculate_shadow_length(self,segmentation):
+        """Calculates the longest length of a shadow from segmentation points.
+        
+        Args:
+            segmentation (list): COCO segmentation format (list of lists of floats).
+        
+        Returns:
+            float: Maximum Euclidean distance between shadow boundary points.
+        """
+        if not segmentation or not segmentation[0]:
+            return None  # Handle empty or invalid segmentation
+
+        points = np.array(segmentation[0]).reshape(-1, 2)  # Reshape to (N, 2)
+        
+        max_length = 0
+        for i in range(len(points)):
+            for j in range(i + 1, len(points)):  # Compare all pairs of points
+                distance = np.linalg.norm(points[i] - points[j])
+                max_length = max(max_length, distance)
+
+        return max_length
+    
+    def calculate_building_height(self, shadow_length, sun_elevation_angle):
+        """Calculates the height of a building using shadow length and sun angle.
+
+        Args:
+            shadow_length (float): Length of the shadow in pixels.
+            sun_elevation_angle (float): Sun elevation angle in degrees.
+
+        Returns:
+            float: Estimated building height.
+        """
+        if shadow_length is None or sun_elevation_angle <= 0:
+            return None  # Avoid division by zero
+        
+        # Convert degrees to radians for tan function
+        sun_angle_rad = math.radians(sun_elevation_angle)
+
+        # Height formula: shadow_length * tan(sun_angle)
+        height = shadow_length * math.tan(sun_angle_rad)
+        
+        return height
+    
+    def compute_building_heights(self, coco_data, sun_elevation_angle):
+        """Computes building heights from shadow lengths and sun elevation angle.
+
+        Args:
+            coco_data (dict): COCO annotation dictionary.
+            sun_elevation_angle (float): Sun elevation angle in degrees.
+
+        Returns:
+            dict: Mapping of building IDs to their estimated heights.
+        """
+        category_ids = self.get_category_ids(coco_data, ['Building', 'Shadow'])
+
+        if 'Building' not in category_ids or 'Shadow' not in category_ids:
+            print("Error: 'building' or 'shadow' categories not found in COCO annotations.")
+            return {}
+
+        building_heights = {}
+
+        for image_ann in coco_data.get('annotations', []):
+            if image_ann['category_id'] == category_ids['Shadow']:
+                print(image_ann.get('segmentation'))
+                shadow_length = self.calculate_shadow_length(image_ann.get('segmentation'))
+                if shadow_length is None:
+                    continue
+
+                height = self.calculate_building_height(shadow_length, sun_elevation_angle)
+                print(height)
+                building_heights[image_ann['id']] = height
+
+        return building_heights
 
             
