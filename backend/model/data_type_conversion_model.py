@@ -112,3 +112,71 @@ class DataTypeConversionModel:
         output_path = "visualized_image.jpg"
         cv2.imwrite(output_path, img)
         return output_path
+    
+
+    def smooth_masks(self, pred_masks):
+        """Apply morphological operations to smooth masks."""
+        smoothed_masks = []
+        kernel = np.ones((5, 5), np.uint8)  # Adjust kernel size for stronger smoothing
+        
+        for mask in pred_masks:
+            mask = mask.astype(np.uint8) * 255  # Convert to binary format
+            smoothed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Closing operation
+            smoothed = cv2.morphologyEx(smoothed, cv2.MORPH_OPEN, kernel)  # Opening operation
+            smoothed_masks.append(smoothed // 255)  # Convert back to boolean format
+        
+        return np.array(smoothed_masks, dtype=bool)
+
+    def convert_with_smoothing(self, image_path: str, image_id: int):
+        """Run inference and smooth building and shadow annotations."""
+        img = cv2.imread(image_path)
+        outputs = self.model.predictor(img)
+        instances = outputs["instances"].to("cpu")
+
+        pred_masks = instances.pred_masks.numpy()  # Shape: (N, H, W)
+        pred_boxes = instances.pred_boxes.tensor.numpy()  # Shape: (N, 4)
+        scores = instances.scores.numpy()  # Confidence scores
+        pred_classes = instances.pred_classes.numpy()  # Class indices
+
+        # Apply smoothing only to Building (1) and Shadow (2) categories
+        mask_indices = np.isin(pred_classes, [0, 1])  # Adjust indices if needed
+        pred_masks[mask_indices] = self.smooth_masks(pred_masks[mask_indices])
+
+        image_height, image_width = img.shape[:2]
+        coco_annotations = []
+
+        for i in range(len(pred_masks)):
+            contours, _ = cv2.findContours(pred_masks[i].astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            segmentation = []
+            for contour in contours:
+                contour = cv2.approxPolyDP(contour, epsilon=2.0, closed=True)  # Approximate polygons
+                contour = contour.flatten().tolist()
+                if len(contour) > 4:
+                    segmentation.append(contour)
+            if not segmentation:
+                continue
+
+            x1, y1, x2, y2 = pred_boxes[i]
+            bbox = [float(x1), float(y1), float(x2 - x1), float(y2 - y1)]
+            area = float(mask_util.area(mask_util.encode(np.asfortranarray(pred_masks[i].astype(np.uint8)))))
+            category_id = int(pred_classes[i]) + 1
+            annotation = {
+                "id": i + 1,
+                "image_id": image_id,
+                "category_id": category_id,
+                "segmentation": segmentation,
+                "bbox": bbox,
+                "area": area,
+                "iscrowd": 0,
+                "score": float(scores[i])
+            }
+            coco_annotations.append(annotation)
+        
+        coco_output = {
+            "images": [{"id": image_id, "file_name": image_path, "height": image_height, "width": image_width}],
+            "annotations": coco_annotations,
+            "categories": [{"id": 1, "name": "Building"}, {"id": 2, "name": "Shadow"},
+                            {"id": 3, "name": "Tree"}, {"id": 4, "name": "Tree_Shadow"}]
+        }
+        
+        return coco_output   
