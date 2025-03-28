@@ -94,7 +94,7 @@ def convert():
     file.save(img_path)
 
     try:
-        coco_output = converter.convert(img_path,1)
+        coco_output = converter.convert_with_smoothing(img_path,1)
         output_path = converter.visualize_coco_annotations(img_path, coco_output)
         
          # Convert to absolute path
