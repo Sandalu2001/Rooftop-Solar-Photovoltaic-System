@@ -6,6 +6,7 @@ const CustomFormField = ({
   label,
   value,
   onChange,
+  onBlur,
   error,
   helperText,
   type,
@@ -26,6 +27,7 @@ const CustomFormField = ({
           type={type}
           helperText={helperText}
           onChange={onChange}
+          onBlur={onBlur}
           error={error}
           value={value}
           fullWidth
