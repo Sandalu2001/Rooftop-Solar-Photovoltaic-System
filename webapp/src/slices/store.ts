@@ -1,14 +1,14 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
-import inventoryReducer from "./solar-slice/index";
-import cashierReducer from "./cashier-slice/index";
+import solarReducer from "./solar-slice/index";
 import authReducer from "./auth-slice/index";
+import commonReducer from "./commonSlice/common";
 
 export const store = configureStore({
   reducer: {
-    inventory: inventoryReducer,
-    cashier: cashierReducer,
+    solar: solarReducer,
     auth: authReducer,
+    common: commonReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
