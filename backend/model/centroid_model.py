@@ -284,9 +284,6 @@ class BuildingShadowMatcher:
             polygon = np.array(ann['segmentation'][0]).reshape(-1, 2).tolist()
             flat_polygon = [coord for point in polygon for coord in point]  # Flatten to [x1, y1, x2, y2, ...]
 
-            # Debugging - Print annotation details
-            print(f"Annotation ID: {ann.get('id', 'N/A')}, Category ID: {ann['category_id']}")
-
             # Assign colors based on category
             category_ids = self.get_category_ids(coco_pairs_data, ['Building', 'Shadow'])
             if ann['category_id'] == category_ids.get('Building'):
