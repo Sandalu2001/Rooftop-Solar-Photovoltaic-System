@@ -3,20 +3,22 @@ import { APIService } from "../../utils/apiService";
 import { AppConfig } from "../../configs/configs";
 import { State } from "../../types/common.type";
 import { enqueueSnackbarMessage } from "../commonSlice/common";
-import { CocoDataInterface } from "../../utils/utils";
+import { CocoDataInterface } from "../../types/componentInterfaces";
 
 interface SolarSliceInterface {
   predictionState: State;
   addNewProductState: State;
   fetchProductsState: State;
-  cocoJSON: CocoDataInterface | null;
+  cocoJSON: CocoDataInterface;
+  image: File | null;
 }
 
 const initialState: SolarSliceInterface = {
   predictionState: State.IDLE,
   fetchProductsState: State.IDLE,
   addNewProductState: State.IDLE,
-  cocoJSON: null,
+  cocoJSON: { coco_output: { images: [], annotations: [], categories: [] } },
+  image: null,
 };
 
 const SolarSlice = createSlice({
@@ -25,6 +27,9 @@ const SolarSlice = createSlice({
   reducers: {
     setUpdatePredictionState: (state, action: PayloadAction<State>) => {
       state.predictionState = action.payload;
+    },
+    setImageData: (state, action: PayloadAction<File>) => {
+      state.image = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -35,6 +40,7 @@ const SolarSlice = createSlice({
       getAnnotatedImage.fulfilled,
       (state, action: PayloadAction<CocoDataInterface>) => {
         state.predictionState = State.SUCCESS;
+        console.log(action.payload);
         state.cocoJSON = action.payload;
       }
     );
@@ -75,5 +81,5 @@ export const getAnnotatedImage = createAsyncThunk(
   }
 );
 
-export const { setUpdatePredictionState } = SolarSlice.actions;
+export const { setUpdatePredictionState, setImageData } = SolarSlice.actions;
 export default SolarSlice.reducer;
