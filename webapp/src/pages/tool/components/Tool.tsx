@@ -4,20 +4,13 @@ import {
   FormControl,
   IconButton,
   MenuItem,
-  Paper,
   Popover,
   Select,
   Stack,
   Typography,
 } from "@mui/material";
-import React, { ChangeEvent, useEffect, useRef, useState } from "react";
-import Cover from "../../../assets/images/rooftop-exsample.jpg";
-import DoneIcon from "@mui/icons-material/Done";
-import CloseIcon from "@mui/icons-material/Close";
-import CustomIconButton from "../../../components/common/CustomIconButton";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  AnnotationState,
-  ImageAnnotation,
   ImageAnnotationPopup,
   ImageAnnotator,
   useAnnotations,
@@ -31,20 +24,9 @@ import { StepperInterface } from "../../../types/componentInterfaces";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { convertCOCOToAnnotorious } from "../../../utils/utils";
-import {
-  AnnotoriousAnnotation,
-  annotoriousAnnotation,
-  convertAnnotoriousToCOCO,
-  imageMetadata,
-} from "../../../utils/utils2";
 import { useAppSelector } from "../../../slices/store";
+import { ClassTypes } from "../../../types/enums";
 
-enum ClassTypes {
-  BUILDING = "building",
-  BUILDINGSHADOW = "building-shadow",
-  TREE = "tree",
-  THREESHADOW = "tree-shadow",
-}
 const Tool = ({ setActiveStep }: StepperInterface) => {
   const [selectedClass, setSelectedClass] = useState<ClassTypes>(
     ClassTypes.BUILDING
@@ -79,9 +61,6 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
   useEffect(() => {
     if (!anno || isEffectRun.current) return;
     isEffectRun.current = true;
-
-    console.log("Hello ");
-    console.log("convertedAnnotations in useEffect:", convertedAnnotations); // Debugging
 
     if (convertedAnnotations) {
       convertedAnnotations.forEach((annotation: any) => {
@@ -119,31 +98,28 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
     if (anno && annotations.length > 0) {
       anno.setStyle((annotation, state) => {
         const classTag = annotation.bodies[0]?.value;
-
-        console.log(classTag);
         let color: any = "#0000FF"; // Default to blue
         switch (classTag) {
           case ClassTypes.BUILDING:
-            color = "#0000FF"; // Blue
+            color = "#F7374F"; // Red
             break;
           case ClassTypes.BUILDINGSHADOW:
-            color = "#808080"; // Gray
+            color = "#261FB3"; // Blue
             break;
           case ClassTypes.TREE:
-            color = "#008000"; // Green
+            color = "#A0C878"; // Green
             break;
           case ClassTypes.THREESHADOW:
             color = "#A9A9A9"; // Dark Gray
             break;
         }
 
-        const opacity = state?.selected ? 0.9 : 0.25;
+        const opacity = state?.selected ? 0.9 : 0.5;
 
         return {
           fill: color,
           fillOpacity: opacity,
           stroke: color,
-          strokeOpacity: 1,
         };
       });
     }
@@ -184,15 +160,6 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
     }
   };
   //------------------------------------------------------------------ //
-
-  // const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-  //   const target = event.target;
-
-  //   if (target === null) {
-  //     throw new Error("target can not be null");
-  //   }
-  //   setSelectedClass(e.target.value as ClassTypes)
-  // };
 
   return (
     <Stack
@@ -277,10 +244,12 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
                 <MenuItem value="">
                   <em>None</em>
                 </MenuItem>
-                <MenuItem value={"building"}>Building</MenuItem>
-                <MenuItem value={"building-shadow"}>Building Shadow</MenuItem>
-                <MenuItem value={"tree"}>Tree</MenuItem>
-                <MenuItem value={"tree-shadow"}>Tree Shadow</MenuItem>
+                <MenuItem value={ClassTypes.BUILDING}>Building</MenuItem>
+                <MenuItem value={ClassTypes.BUILDINGSHADOW}>
+                  Building Shadow
+                </MenuItem>
+                <MenuItem value={ClassTypes.TREE}>Tree</MenuItem>
+                <MenuItem value={ClassTypes.THREESHADOW}>Tree Shadow</MenuItem>
               </Select>
             </FormControl>
 
