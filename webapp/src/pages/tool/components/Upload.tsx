@@ -27,7 +27,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import UploadCompleteImage from "../../../assets/images/upload-complete.svg";
 import DownloadIcon from "@mui/icons-material/Download";
 import CancelIcon from "@mui/icons-material/Cancel";
-import { getAnnotatedImage } from "../../../slices/solar-slice";
+import { getAnnotatedImage, setImageData } from "../../../slices/solar-slice";
 import { enqueueSnackbarMessage } from "../../../slices/commonSlice/common";
 import { State } from "../../../types/common.type";
 import { LoadingButton } from "@mui/lab";
@@ -45,6 +45,7 @@ const Upload = ({ setActiveStep }: StepperInterface) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
       setImage(file);
+      dispatch(setImageData(file));
       setFileName(file.name);
       formik.setFieldValue("file", file ? file : null, true);
     }
