@@ -18,6 +18,7 @@ import { Annotorious } from "@annotorious/react";
 import Tool from "./pages/tool/index";
 import Home from "./pages/home/Home";
 import MapComponent from "./pages/tool/Map";
+import { SnackbarProvider } from "notistack";
 
 Amplify.configure(outputs);
 
@@ -88,12 +89,14 @@ function App() {
   ]);
 
   return (
-    <Annotorious>
-      <Box className="App">
-        <RouterProvider router={router} />
-        {/* <DefaultComponent /> */}
-      </Box>
-    </Annotorious>
+    <SnackbarProvider maxSnack={3} preventDuplicate>
+      <Annotorious>
+        <Box className="App">
+          <RouterProvider router={router} />
+          {/* <DefaultComponent /> */}
+        </Box>
+      </Annotorious>
+    </SnackbarProvider>
   );
 }
 
