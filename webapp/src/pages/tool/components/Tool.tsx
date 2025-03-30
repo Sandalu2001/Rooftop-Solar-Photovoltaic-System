@@ -7,6 +7,7 @@ import {
   Popover,
   Select,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
@@ -20,12 +21,21 @@ import {
 import "@annotorious/react/annotorious-react.css";
 import FactCard from "../../../components/common/FactCard";
 import ControlPanel from "../../../components/common/ControlPanel";
-import { StepperInterface } from "../../../types/componentInterfaces";
+import {
+  AnnotoriousAnnotation,
+  StepperInterface,
+} from "../../../types/componentInterfaces";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { convertCOCOToAnnotorious } from "../../../utils/utils";
-import { useAppSelector } from "../../../slices/store";
+import DeleteIcon from "@mui/icons-material/Delete";
+import {
+  convertAnnotoriousToCOCO,
+  convertCOCOToAnnotorious,
+} from "../../../utils/utils";
+import { useAppDispatch, useAppSelector } from "../../../slices/store";
 import { ClassTypes } from "../../../types/enums";
+import CustomIconButton from "../../../components/common/CustomIconButton";
+import { getPairs } from "../../../slices/solar-slice";
 
 const Tool = ({ setActiveStep }: StepperInterface) => {
   const [selectedClass, setSelectedClass] = useState<ClassTypes>(
@@ -35,6 +45,7 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
   const image = useAppSelector((state) => state.solar.image);
   const cocoAnnotations = useAppSelector((state) => state.solar.cocoJSON);
   const [imageURL, setImageURL] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
 
   const annotations = useAnnotations();
   const anno = useAnnotator();
@@ -42,13 +53,59 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const isEffectRun = useRef(false);
   const [convertedAnnotations, setConvertedAnnotations] = useState<any>();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [pairKey, setPairKey] = useState<string>("");
 
+  console.log("cocoAnnotations", annotations);
+
+  // Capture selecting an annotation
   useEffect(() => {
-    console.log("Redux cocoAnnotations:", cocoAnnotations);
+    if (selected.length > 0) {
+      const selectedAnnotation = selected[0].annotation;
+      setSelectedId(selectedAnnotation.id);
 
+      // Extract the category from the annotation bodies
+      const categoryBody = selectedAnnotation.bodies.find(
+        (body: any) => body.purpose === "tagging"
+      );
+      setSelectedCategory(categoryBody?.value ?? null);
+      // Check if there is a pairKey stored in the annotation
+      const pairKeyBody = selectedAnnotation.bodies.find(
+        (body: any) => body.purpose === "pairKey"
+      );
+      setPairKey(pairKeyBody?.value ?? "");
+    } else {
+      setSelectedId(null);
+      setSelectedCategory(null);
+      setPairKey("");
+    }
+  }, [selected]);
+
+  const handlePairKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPairKey(e.target.value);
+  };
+
+  // Function to update annotation with the new pairKey
+  const updatePairKey = () => {
+    if (anno && selectedId) {
+      const annotation = annotations.find((a) => a.id === selectedId);
+      if (annotation) {
+        const updatedAnnotation = {
+          ...annotation,
+          bodies: [
+            ...annotation.bodies.filter((b) => b.purpose !== "pairKey"), // Remove old pairKey
+            { purpose: "pairKey", value: pairKey }, // Add new pairKey
+          ],
+        };
+        anno.updateAnnotation(updatedAnnotation);
+      }
+    }
+  };
+
+  // Convert COCO annotations to Annotorious format
+  useEffect(() => {
     if (cocoAnnotations?.coco_output) {
       const newAnnotations = convertCOCOToAnnotorious(cocoAnnotations);
-      console.log("Converted Annotations:", newAnnotations);
       setConvertedAnnotations(newAnnotations);
     } else {
       console.warn(
@@ -58,6 +115,7 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
     }
   }, [cocoAnnotations]);
 
+  // Add converted annotations to Annot
   useEffect(() => {
     if (!anno || isEffectRun.current) return;
     isEffectRun.current = true;
@@ -71,6 +129,7 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
     }
   }, [anno, convertedAnnotations]);
 
+  // Load image into the annotator
   useEffect(() => {
     if (image) {
       const reader = new FileReader();
@@ -98,7 +157,7 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
     if (anno && annotations.length > 0) {
       anno.setStyle((annotation, state) => {
         const classTag = annotation.bodies[0]?.value;
-        let color: any = "#0000FF"; // Default to blue
+        let color: any = "#FFFFFF"; // Default to white
         switch (classTag) {
           case ClassTypes.BUILDING:
             color = "#F7374F"; // Red
@@ -107,10 +166,10 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
             color = "#261FB3"; // Blue
             break;
           case ClassTypes.TREE:
-            color = "#A0C878"; // Green
+            color = "#D3E671"; // Green
             break;
           case ClassTypes.THREESHADOW:
-            color = "#A9A9A9"; // Dark Gray
+            color = "#FF2DF1"; // Yellow
             break;
         }
 
@@ -168,8 +227,33 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
         alignContent: "center",
         paddingY: 8,
         gap: 2,
+        flexDirection: "row",
       }}
     >
+      <Stack
+        flex={1}
+        sx={{
+          gap: 2,
+        }}
+      >
+        <FactCard
+          description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
+          color="inherit"
+        />
+        <FactCard
+          description="Get standardized views of data and insight across borders and
+languages to more easily compare and strategize"
+          color="inherit"
+        />
+        <FactCard
+          description="Talk to our experts and read their research and analysis reports"
+          color="primary"
+        />
+        <FactCard
+          description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
+          color="inherit"
+        />
+      </Stack>
       <Stack
         sx={{
           flexDirection: "row",
@@ -177,6 +261,7 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
           alignContent: "center",
           alignItems: "center",
           gap: 2,
+          flex: 3,
           position: "relative",
         }}
       >
@@ -211,7 +296,32 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
               )}
             </ImageAnnotator>
 
-            <ImageAnnotationPopup popup={(props) => <div>Hello World</div>} />
+            <ImageAnnotationPopup
+              popup={(props) => (
+                <Stack
+                  spacing={2}
+                  sx={{
+                    background: (theme) => theme.palette.common.white,
+                    p: 2,
+                    borderRadius: 3,
+                    boxShadow: 2,
+                  }}
+                >
+                  <Typography>Category: {selectedCategory}</Typography>
+
+                  <TextField
+                    label="Pair Key"
+                    variant="outlined"
+                    size="small"
+                    value={pairKey}
+                    onChange={handlePairKeyChange}
+                  />
+                  <Button variant="contained" onClick={updatePairKey}>
+                    Update Pair Key
+                  </Button>
+                </Stack>
+              )}
+            />
           </div>
 
           <Stack
@@ -253,16 +363,34 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
               </Select>
             </FormControl>
 
-            <Stack>
-              <ControlPanel />
-            </Stack>
+            <IconButton
+              sx={{
+                color: "white",
+                background: (theme) => alpha(theme.palette.common.black, 0.8),
+                "&:hover": {
+                  background: (theme) => alpha(theme.palette.common.black, 1),
+                },
+              }}
+              onClick={handleDelete}
+            >
+              <DeleteIcon fontSize="large" />
+            </IconButton>
 
             <Stack flexDirection={"row"}>
               <Button
                 variant="contained"
                 color="primary"
                 size="large"
-                onClick={() => setActiveStep(1)}
+                onClick={() =>
+                  dispatch(
+                    getPairs(
+                      convertAnnotoriousToCOCO(
+                        annotations as any,
+                        cocoAnnotations.coco_output.images[0]
+                      )
+                    )
+                  )
+                }
                 sx={{
                   display: "flex",
                   alignSelf: "end",
@@ -284,8 +412,8 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
             </Stack>
           </Stack>
 
-          <Typography>Selected Annotation </Typography>
-          <pre>{JSON.stringify(selected, null, 2)}</pre>
+          {/* <Typography>Selected Annotation </Typography>
+          <pre>{JSON.stringify(selected, null, 2)}</pre> */}
         </Stack>
 
         <Popover
