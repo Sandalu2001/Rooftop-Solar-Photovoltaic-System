@@ -154,27 +154,29 @@ def get_satellite_data():
 
 @image_controller.route('/centroid',methods=['POST'])
 def get_centroid():
-    if "image" not in request.files:
+    json_data = request.form.get("json")
+    if not json_data:
+        return jsonify({"error": "No JSON data received"}), 400
+    
+    if json_data:
+        coco_output = eval(json_data)
+
+    if 'image' not in request.files:
         return jsonify({"error": "No image uploaded"}), 400
+    
+    image = request.files['image']
+    if image.filename == '':
+            return jsonify({"error": "No selected image"}), 400
 
-    file = request.files["image"]
-    if file.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
-
-    # Save uploaded image
-    filename = secure_filename(file.filename) 
-    img_path = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(img_path)
+    # Save image
+    img_path = os.path.join(UPLOAD_FOLDER, image.filename) 
+    image.save(img_path)
 
     try:
-        coco_output = converter.convert(img_path,1)
-        updated_coco_output = matcher.find_building_shadow_pairs(coco_output)
-        # print(updated_coco_output)
-        result_path = matcher.visualize_building_shadow_pairs(updated_coco_output,img_path,"uploads")
-
+        updated_coco_output = matcher.find_building_tree_shadow_pairs(coco_output.get('coco_output',{}),250)
+        # result_path = matcher.visualize_building_shadow_pairs(updated_coco_output,img_path)
+        result_path = converter.visualize_coco_annotations(img_path, updated_coco_output)
         building_heights = matcher.compute_building_heights(updated_coco_output, 45)
-        print(building_heights)
-        print(result_path)
          # Convert to absolute path
         abs_result_path = os.path.abspath(result_path)
         print(f"Sending file: {abs_result_path}")
@@ -182,11 +184,11 @@ def get_centroid():
         if not os.path.exists(abs_result_path):
             return jsonify({"error": f"File not found: {abs_result_path}"}), 500
         
-        return send_file(abs_result_path, mimetype="image/png")
+        # return send_file(abs_result_path, mimetype="image/png")
 
         # if shadowPairs is None:
         #     return jsonify({"error": "No shadow pairs found"}), 404
 
-        # return jsonify({"shadowPairs": shadowPairs})
+        return jsonify({"updated_coco": updated_coco_output})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
