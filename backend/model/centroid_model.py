@@ -89,30 +89,6 @@ class BuildingShadowMatcher:
         cv2.imwrite(result_path, result_image)  # Use corrected image
         return result_path
 
-        """Visualize the first building and shadow match with labels"""
-        im = cv2.imread(image_path)
-        v = Visualizer(im[:, :, ::-1], metadata=self.model.metadata, scale=0.5)
-        out = v.draw_instance_predictions(instances)
-        
-        if matches:
-            for b_id, s_id in matches.items():
-                building_mask = instances.pred_masks[b_id].numpy()
-                shadow_mask = instances.pred_masks[s_id].numpy()
-                
-                # Get centroids for labeling
-                b_centroid = self.compute_centroids([building_mask])[0]
-                s_centroid = self.compute_centroids([shadow_mask])[0]
-                
-                # Draw labels
-                cv2.putText(out.get_image()[:, :, ::-1], f"Building {b_id}", (int(b_centroid[0]), int(b_centroid[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-                cv2.putText(out.get_image()[:, :, ::-1], f"Shadow {s_id}", (int(s_centroid[0]), int(s_centroid[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                
-                print(f"Building {b_id} -> Shadow {s_id}")
-        
-        result_path = os.path.join("results", os.path.basename(image_path))
-        cv2.imwrite(result_path, out.get_image()[:, :, ::-1])
-        return result_path
-
     def process_image(self, image_path):
         """Run the full process: predict, extract, match, visualize"""
         buildings, shadows, instances, outputs = self.extract_masks(image_path)
@@ -173,36 +149,33 @@ class BuildingShadowMatcher:
         x2, y2 = centroid2
         return sqrt((x2 - x1)**2 + (y2 - y1)**2)
     
-    def find_building_shadow_pairs(self,coco_data, distance_threshold=100):
-        """Finds building and corresponding shadow annotation pairs in a COCO JSON and returns in COCO format.
-
-        Assumptions for correspondence:
-        - Annotations are in the same image.
-        - Shadows are spatially close to buildings (within distance_threshold).
-        - Simplest correspondence: For each building, find the closest shadow within the threshold.
+    def find_building_tree_shadow_pairs(self, coco_data, distance_threshold=100):
+        """Finds building-shadow and tree-shadow pairs in a COCO JSON and returns them uniquely.
 
         Args:
             coco_data (dict): COCO annotation dictionary.
             distance_threshold (int, optional): Maximum distance between centroids
-                                            to consider a building and shadow as corresponding.
-                                            Defaults to 100 pixels. Adjust based on image size
-                                            and object scale in your dataset.
+                                                to consider objects as corresponding pairs.
 
         Returns:
-            dict: A COCO format dictionary containing annotations representing building-shadow pairs.
-                 The 'annotations' list in the returned dictionary will contain modified building and shadow
-                 annotations, each linked by a 'pair_id'.
+            dict: A COCO format dictionary containing building-shadow and tree-shadow pairs,
+                uniquely identified with separate `pair_id` sequences.
         """
 
-        category_ids = self.get_category_ids(coco_data, ['Building', 'Shadow'])
+        # Get category IDs for Buildings, Shadows, Trees, and Tree_Shadows
+        category_ids = self.get_category_ids(coco_data, ['Building', 'Shadow', 'Tree', 'Tree_Shadow'])
 
-        if 'Building' not in category_ids or 'Shadow' not in category_ids:
-            print("Error: 'building' or 'shadow' categories not found in COCO annotations.")
+        # Ensure all required categories exist
+        if any(cat not in category_ids for cat in ['Building', 'Shadow', 'Tree', 'Tree_Shadow']):
+            print("Error: One or more categories ('Building', 'Shadow', 'Tree', 'Tree_Shadow') not found in COCO annotations.")
             return {}
 
         building_category_id = category_ids['Building']
         shadow_category_id = category_ids['Shadow']
+        tree_category_id = category_ids['Tree']
+        tree_shadow_category_id = category_ids['Tree_Shadow']
 
+        # Organize annotations by image
         image_annotations = {}
         for annotation in coco_data.get('annotations', []):
             image_id = annotation['image_id']
@@ -213,32 +186,33 @@ class BuildingShadowMatcher:
         coco_pairs_data = {
             'images': coco_data.get('images', []),
             'categories': coco_data.get('categories', []),
-            'annotations': [] # Initialize empty annotations list for pairs
+            'annotations': []
         }
-        annotation_id_counter = 1 # Counter for new annotation IDs (if needed, though we can reuse original)
-        pair_id_counter = 1 # Counter for pair IDs
+
+        # Unique pair ID counters for buildings and trees
+        building_pair_id_counter = 1
+        tree_pair_id_counter = 1000  # Start at 1000 to distinguish from building pairs
 
         for image_id, annotations_in_image in image_annotations.items():
+            # Separate annotations by type
             building_annotations = [ann for ann in annotations_in_image if ann['category_id'] == building_category_id]
             shadow_annotations = [ann for ann in annotations_in_image if ann['category_id'] == shadow_category_id]
+            tree_annotations = [ann for ann in annotations_in_image if ann['category_id'] == tree_category_id]
+            tree_shadow_annotations = [ann for ann in annotations_in_image if ann['category_id'] == tree_shadow_category_id]
 
-            if not building_annotations or not shadow_annotations:
-                continue  # No buildings or shadows in this image, skip
-
+            ## --- Pair Buildings with Shadows ---
             for building_ann in building_annotations:
-                # Calculate centroid of building annotation
                 building_centroid = self.calculate_centroid(building_ann.get('segmentation'))
                 if building_centroid is None:
-                    continue # Skip if building segmentation is invalid
+                    continue
 
                 closest_shadow_ann = None
                 min_distance = float('inf')
 
-                # Find the closest shadow to the building
                 for shadow_ann in shadow_annotations:
                     shadow_centroid = self.calculate_centroid(shadow_ann.get('segmentation'))
                     if shadow_centroid is None:
-                        continue # Skip if shadow segmentation is invalid
+                        continue
 
                     distance = self.calculate_distance(building_centroid, shadow_centroid)
                     if distance < min_distance and distance <= distance_threshold:
@@ -246,15 +220,40 @@ class BuildingShadowMatcher:
                         closest_shadow_ann = shadow_ann
 
                 if closest_shadow_ann:
-                    building_ann['pair_id'] = pair_id_counter # Add pair_id to building annotation
-                    closest_shadow_ann['pair_id'] = pair_id_counter # Add pair_id to shadow annotation
-                    coco_pairs_data['annotations'].append(building_ann) # Add building annotation to coco_pairs_data
-                    coco_pairs_data['annotations'].append(closest_shadow_ann) # Add shadow annotation to coco_pairs_data
-                    pair_id_counter += 1
-                    # Optionally remove paired shadow to prevent re-pairing (depends on desired logic)
-                    # shadow_annotations.remove(closest_shadow_ann) # Be careful modifying list while iterating
+                    building_ann['pair_id'] = building_pair_id_counter
+                    closest_shadow_ann['pair_id'] = building_pair_id_counter
+                    coco_pairs_data['annotations'].append(building_ann)
+                    coco_pairs_data['annotations'].append(closest_shadow_ann)
+                    building_pair_id_counter += 1
+
+            ## --- Pair Trees with Tree_Shadows ---
+            for tree_ann in tree_annotations:
+                tree_centroid = self.calculate_centroid(tree_ann.get('segmentation'))
+                if tree_centroid is None:
+                    continue
+
+                closest_tree_shadow_ann = None
+                min_distance = float('inf')
+
+                for tree_shadow_ann in tree_shadow_annotations:
+                    tree_shadow_centroid = self.calculate_centroid(tree_shadow_ann.get('segmentation'))
+                    if tree_shadow_centroid is None:
+                        continue
+
+                    distance = self.calculate_distance(tree_centroid, tree_shadow_centroid)
+                    if distance < min_distance and distance <= distance_threshold:
+                        min_distance = distance
+                        closest_tree_shadow_ann = tree_shadow_ann
+
+                if closest_tree_shadow_ann:
+                    tree_ann['pair_id'] = tree_pair_id_counter
+                    closest_tree_shadow_ann['pair_id'] = tree_pair_id_counter
+                    coco_pairs_data['annotations'].append(tree_ann)
+                    coco_pairs_data['annotations'].append(closest_tree_shadow_ann)
+                    tree_pair_id_counter += 1
 
         return coco_pairs_data
+
 
     def visualize_building_shadow_pairs(self, coco_pairs_data, image_path, output_dir="results"):
         """Visualizes building-shadow pairs on a single image and saves it. (Single Image Version)
