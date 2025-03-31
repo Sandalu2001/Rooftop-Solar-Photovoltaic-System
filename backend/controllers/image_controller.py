@@ -175,10 +175,11 @@ def get_centroid():
     try:
         updated_coco_output = matcher.find_building_tree_shadow_pairs(coco_output.get('coco_output',{}),250)
         result_path = converter.visualize_coco_annotations(img_path, updated_coco_output)
-        coco_output_with_building_height = matcher.compute_building_heights(updated_coco_output, 45)
+        coco_output_with_tree_height = matcher.compute_object_heights(updated_coco_output, 45, ['Tree', 'Tree_Shadow'])
+        coco_output_with_building_height = matcher.compute_object_heights(coco_output_with_tree_height, 45, ['Building', 'Shadow'])
 
         # Generate 3D Model and return 
-        result_path = matcher.generate_3d_model(coco_output_with_building_height,"results")
+        result_path = matcher.generate_3d_model(coco_output_with_building_height,"results", img_path)
 
 
          # Convert to absolute path
