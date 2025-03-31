@@ -359,14 +359,24 @@ class BuildingShadowMatcher:
         """
         plotter = pv.Plotter(off_screen=True)
 
+         # Load image to get dimensions
+        img = Image.open(image_path)
+        img_width, img_height = img.size  # Get original image dimensions
+
+        # Scale the image dimensions to keep proportions in the 3D model
+        scale_factor = 1.0  # Adjust this if necessary
+        i_size = img_width * scale_factor
+        j_size = img_height * scale_factor
+
         # Load the image as a ground texture
         ground_texture = pv.read_texture(image_path)
         
         # Create a flat plane for the image ground
         image_plane = pv.Plane(
-            center=(0, 0, 0),  
-            i_size=1000, j_size=1000,  # Adjust based on image size
-            direction=(1, 0, 1)  # Ensure it lies flat
+            center=(img_width / 2, -img_height / 2, 0),  # Adjust center to align properly
+            i_size=i_size,
+            j_size=j_size,
+            direction=(0, 0, 1)  # Keep the plane flat
         )
         image_plane.texture_map_to_plane(inplace=True)
         plotter.add_mesh(image_plane, texture=ground_texture)
