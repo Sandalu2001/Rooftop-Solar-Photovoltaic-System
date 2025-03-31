@@ -174,9 +174,22 @@ def get_centroid():
 
     try:
         updated_coco_output = matcher.find_building_tree_shadow_pairs(coco_output.get('coco_output',{}),250)
-        # result_path = matcher.visualize_building_shadow_pairs(updated_coco_output,img_path)
         result_path = converter.visualize_coco_annotations(img_path, updated_coco_output)
-        building_heights = matcher.compute_building_heights(updated_coco_output, 45)
+        coco_output_with_building_height = matcher.compute_building_heights(updated_coco_output, 45)
+
+        # Generate 3D Model and return 
+        result_path = matcher.generate_3d_model(coco_output_with_building_height,"results")
+
+
+         # Convert to absolute path
+        abs_result_path = os.path.abspath(result_path)
+        print(f"Sending file: {abs_result_path}")
+
+        if not os.path.exists(abs_result_path):
+            return jsonify({"error": f"File not found: {abs_result_path}"}), 500
+        
+        return send_file(abs_result_path, mimetype="model/gltf-binary")
+
          # Convert to absolute path
         abs_result_path = os.path.abspath(result_path)
         print(f"Sending file: {abs_result_path}")
@@ -189,6 +202,6 @@ def get_centroid():
         # if shadowPairs is None:
         #     return jsonify({"error": "No shadow pairs found"}), 404
 
-        return jsonify({"updated_coco": updated_coco_output})
+        return jsonify({"updated_coco": coco_output_with_building_height})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
