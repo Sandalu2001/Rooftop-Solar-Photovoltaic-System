@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyvista as pv
 import trimesh
+import random
 
 class BuildingShadowMatcher:
     def __init__(self):
@@ -346,39 +347,65 @@ class BuildingShadowMatcher:
 
         return buildings
 
-
-    def generate_3d_model(self,coco_data, output_path):
-        """Generates an interactive 3D model from COCO data and saves as GLB.
+    def generate_3d_model(self, coco_data, output_path, image_path):
+        """Generates an interactive 3D model from COCO data and overlays it on an image.
 
         Args:
             coco_data (dict): COCO annotation dictionary with `building_height`.
             output_path (str): Output directory to save the 3D model.
+            image_path (str): Path to the original image.
         Returns:
             str: Path to the saved 3D GLB file.
         """
         plotter = pv.Plotter(off_screen=True)
+
+        # Load the image as a ground texture
+        ground_texture = pv.read_texture(image_path)
         
+        # Create a flat plane for the image ground
+        image_plane = pv.Plane(
+            center=(0, 0, 0),  
+            i_size=1000, j_size=1000,  # Adjust based on image size
+            direction=(1, 0, 1)  # Ensure it lies flat
+        )
+        image_plane.texture_map_to_plane(inplace=True)
+        plotter.add_mesh(image_plane, texture=ground_texture)
+
         buildings = self.extract_building_data(coco_data)
 
         for footprint, height in buildings:
-            footprint_3d = np.array([(x, y, 0) for x, y in footprint])
-            top_3d = np.array([(x, y, height) for x, y in footprint])
+            footprint_3d = np.array([(x, -y, 0) for x, y in footprint])
+            top_3d = np.array([(x, -y, height) for x, y in footprint])
 
+            all_points = np.vstack([footprint_3d, top_3d])
             faces = []
+
+            # Side walls
             for i in range(len(footprint)):
                 next_i = (i + 1) % len(footprint)
                 faces.append([4, i, next_i, next_i + len(footprint), i + len(footprint)])
 
-            all_points = np.vstack([footprint_3d, top_3d])
+            # Bottom face
+            faces.append([len(footprint)] + list(range(len(footprint))))  
+
+            # Top face
+            faces.append([len(footprint)] + list(range(len(footprint), len(all_points))))  
+
+            # Create the building mesh
             mesh = pv.PolyData(all_points, np.hstack(faces))
 
-            plotter.add_mesh(mesh, color="lightgray", show_edges=True)
+            # Generate a random color for each building
+            building_color = [random.random(), random.random(), random.random()]
+            plotter.add_mesh(mesh, color=building_color, show_edges=True)
 
         plotter.camera_position = 'iso'
-        output_path = os.path.join(output_path, "3d_model.glb")
-        plotter.export_gltf(output_path)
 
-        return output_path
+        # Export as GLB
+        output_glb_path = os.path.join(output_path, "3d_model.glb")
+        plotter.export_gltf(output_glb_path)
+
+        return output_glb_path
+
 
 
 
