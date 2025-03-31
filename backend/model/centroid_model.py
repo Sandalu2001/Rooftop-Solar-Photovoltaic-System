@@ -382,16 +382,38 @@ class BuildingShadowMatcher:
             centroid = np.mean(footprint, axis=0)
             x, y = centroid
 
-            # Create tree trunk (Cylinder)
-            trunk_radius = height * 0.1  # 10% of height
-            trunk = pv.Cylinder(center=(x, -y, trunk_radius), direction=(0, 0, 1), 
-                                radius=trunk_radius, height=height * 0.5)
+             # ----------- Tree Trunk ----------- #
+            trunk_height = height * 0.4  # 40% of the total tree height
+            trunk_radius = height * 0.1  # 10% of the tree height for trunk radius
+            
+            # Place the tree trunk with its base at z = 0
+            trunk = pv.Cylinder(center=(x, -y, trunk_height / 2), direction=(0, 0, 1), 
+                                radius=trunk_radius, height=trunk_height)
             plotter.add_mesh(trunk, color=(0.55, 0.27, 0.07))  # Brown trunk
 
-            # Create tree canopy (Sphere)
-            canopy_radius = height * 0.4  # 40% of height
-            canopy = pv.Sphere(center=(x, -y, height * 0.75), radius=canopy_radius)
-            plotter.add_mesh(canopy, color=(0.13, 0.55, 0.13))  # Green canopy
+                    #------------Tree Canopy --------------#
+            footprint_3d = np.array([(x, -y, (height - trunk_height)*0.5) for x, y in footprint]) # Bottom at 50% of height
+            top_3d = np.array([(x, -y, height) for x, y in footprint]) # Top at full height
+
+            all_points = np.vstack([footprint_3d, top_3d])
+            faces = []
+
+            # Side walls
+            for i in range(len(footprint)):
+                next_i = (i + 1) % len(footprint)
+                faces.append([4, i, next_i, next_i + len(footprint), i + len(footprint)])
+
+            # Bottom face
+            faces.append([len(footprint)] + list(range(len(footprint))))  
+
+            # Top face
+            faces.append([len(footprint)] + list(range(len(footprint), len(all_points))))  
+
+            # Create building mesh
+            mesh = pv.PolyData(all_points, np.hstack(faces))
+            plotter.add_mesh(mesh, color=(0.13, 0.55, 0.13), show_edges=True)
+
+
 
         ## ---- EXPORT MODEL ---- ##
         plotter.camera_position = 'iso'
