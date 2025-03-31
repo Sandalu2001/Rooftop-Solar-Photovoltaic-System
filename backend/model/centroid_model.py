@@ -202,7 +202,7 @@ class BuildingShadowMatcher:
 
         return max_length
     
-    def calculate_building_height(self, shadow_length, sun_elevation_angle):
+    def calculate_object_height(self, shadow_length, sun_elevation_angle):
         """Calculates the height of a building using shadow length and sun angle.
 
         Args:
@@ -223,24 +223,25 @@ class BuildingShadowMatcher:
         
         return height
     
-    def compute_building_heights(self, coco_data, sun_elevation_angle):
+    def compute_object_heights(self, coco_data, sun_elevation_angle, category_names):
         """Computes building heights from shadow lengths and adds them to the COCO annotations.
 
         Args:
             coco_data (dict): COCO annotation dictionary.
             sun_elevation_angle (float): Sun elevation angle in degrees.
+            category_names (dict): Category names.
 
         Returns:
             dict: Updated COCO data with `building_height` included in building annotations.
         """
-        category_ids = self.get_category_ids(coco_data, ['Building', 'Shadow'])
+        category_ids = self.get_category_ids(coco_data, category_names)
 
-        if 'Building' not in category_ids or 'Shadow' not in category_ids:
-            print("Error: 'Building' or 'Shadow' categories not found in COCO annotations.")
+        if category_names[0] not in category_ids or category_names[1] not in category_ids:
+            print("Error: "+category_names[0]+" or "+category_names[1]+" categories not found in COCO annotations.")
             return coco_data  # Return original data if categories are missing
 
-        building_category_id = category_ids['Building']
-        shadow_category_id = category_ids['Shadow']
+        object_category_id = category_ids[category_names[0]]
+        shadow_category_id = category_ids[category_names[1]]
 
         # Create a mapping of shadows by image_id
         shadow_annotations = {ann['image_id']: [] for ann in coco_data['annotations'] if ann['category_id'] == shadow_category_id}
@@ -250,15 +251,15 @@ class BuildingShadowMatcher:
 
         # Update buildings with estimated height
         for ann in coco_data['annotations']:
-            if ann['category_id'] == building_category_id:
+            if ann['category_id'] == object_category_id:
                 image_id = ann['image_id']
 
-                # Find the nearest shadow for this building
+                # Find the nearest shadow for this object
                 closest_shadow = None
                 min_distance = float('inf')
 
-                building_centroid = self.calculate_centroid(ann.get('segmentation'))
-                if building_centroid is None:
+                object_centroid = self.calculate_centroid(ann.get('segmentation'))
+                if object_centroid is None:
                     continue
 
                 for shadow_ann in shadow_annotations.get(image_id, []):
@@ -266,7 +267,7 @@ class BuildingShadowMatcher:
                     if shadow_centroid is None:
                         continue
 
-                    distance = self.calculate_distance(building_centroid, shadow_centroid)
+                    distance = self.calculate_distance(object_centroid, shadow_centroid)
                     if distance < min_distance:
                         min_distance = distance
                         closest_shadow = shadow_ann
@@ -275,114 +276,81 @@ class BuildingShadowMatcher:
                 if closest_shadow:
                     shadow_length = self.calculate_shadow_length(closest_shadow.get('segmentation'))
                     if shadow_length is not None:
-                        building_height = self.calculate_building_height(shadow_length, sun_elevation_angle)
-                        ann['building_height'] = building_height  # Add to COCO annotation
+                        object_height = self.calculate_object_height(shadow_length, sun_elevation_angle)
+                        ann['object_height'] = object_height  # Add to COCO annotation
 
         return coco_data  # Return updated COCO JSON
-    
 
-    def get_annotations_for_image(coco_data, image_id):
-        """ Get all annotations for a given image ID. """
-        return [ann for ann in coco_data["annotations"] if ann["image_id"] == image_id and ann["category_id"] == 1]
-    
-    def coco_segmentation_to_polygon(segmentation):
-        """ Convert COCO segmentation to Shapely Polygons. """
-        polygons = []
-        for segment in segmentation:
-            points = np.array(segment).reshape(-1, 2)
-            polygons.append(Polygon(points))
-        return polygons
-    
-    def extrude_polygon_to_3d(polygon, height):
-        """ Extrude a 2D polygon into a 3D model with a given height. """
-        vertices = []
-        faces = []
-
-        exterior_coords = np.array(polygon.exterior.coords[:-1])  # Remove duplicate last point
-        num_points = len(exterior_coords)
-
-        # Create bottom and top vertices
-        bottom_vertices = np.hstack([exterior_coords, np.zeros((num_points, 1))])
-        top_vertices = np.hstack([exterior_coords, np.full((num_points, 1), height)])
-
-        vertices = np.vstack([bottom_vertices, top_vertices])  # Stack vertices
-
-        # Create side faces (walls)
-        for i in range(num_points - 1):
-            v1, v2 = i, (i + 1) % num_points
-            v3, v4 = v1 + num_points, v2 + num_points
-            faces.append([v1, v2, v4])
-            faces.append([v1, v4, v3])
-
-        # Triangulate the bottom and top surfaces
-        for triangle in triangulate(polygon):
-            indices = [exterior_coords.tolist().index(list(pt)) for pt in triangle.exterior.coords[:-1]]
-            faces.append(indices)  # Bottom face
-            faces.append([i + num_points for i in indices])  # Top face
-
-        return trimesh.Trimesh(vertices=vertices, faces=np.array(faces, dtype=np.int64))
-    
-
-
-    #-----------------NEW----------------#
-
-    def extract_building_data(self,coco_data):
-        """Extracts building footprints and heights from COCO annotations.
+    def extract_object_data(self,coco_data,category):
+        """Extracts object footprints and heights from COCO annotations.
 
         Args:
-            coco_data (dict): COCO annotation dictionary with `building_height`.
+            coco_data (dict): COCO annotation dictionary with `object_height`.
+            category (str): The category to filter ('Building' or 'Tree').
 
         Returns:
             list: List of (footprint, height) tuples.
         """
-        buildings = []
-        
-        for ann in coco_data.get("annotations", []):
-            if "building_height" in ann:
-                height = ann["building_height"]
-                segmentation = ann.get("segmentation", [[]])[0]
-                if segmentation:
-                    points = np.array(segmentation).reshape(-1, 2)
-                    buildings.append((points, height))
+        objects = []
 
-        return buildings
+        # Get the category id for the specified category
+        category_id = self.get_category_ids(coco_data, [category]).get(category)
+        if category_id is None:
+            print(f"Error: Category '{category}' not found in COCO annotations.")
+            return objects
+            
+        for ann in coco_data.get("annotations", []):
+            if ann.get("category_id") == category_id:
+                # Get the object height (which could be a tree or building)
+                height = ann.get("object_height", None)  # Assuming 'object_height' instead of 'building_height'
+                segmentation = ann.get("segmentation", [[]])[0]
+                
+                if segmentation and height is not None:
+                    points = np.array(segmentation).reshape(-1, 2)
+                    objects.append((points, height))
+
+        return objects
 
     def generate_3d_model(self, coco_data, output_path, image_path):
-        """Generates an interactive 3D model from COCO data and overlays it on an image.
+        """Generates an interactive 3D model from COCO data, including trees and buildings.
 
         Args:
-            coco_data (dict): COCO annotation dictionary with `building_height`.
+            coco_data (dict): COCO annotation dictionary with `object_height`.
             output_path (str): Output directory to save the 3D model.
             image_path (str): Path to the original image.
+
         Returns:
             str: Path to the saved 3D GLB file.
         """
         plotter = pv.Plotter(off_screen=True)
 
-         # Load image to get dimensions
+        # Load image to get dimensions
         img = Image.open(image_path)
-        img_width, img_height = img.size  # Get original image dimensions
+        img_width, img_height = img.size
 
-        # Scale the image dimensions to keep proportions in the 3D model
-        scale_factor = 1.0  # Adjust this if necessary
+        # Scale the image to match ground plane
+        scale_factor = 1.0  
         i_size = img_width * scale_factor
         j_size = img_height * scale_factor
 
-        # Load the image as a ground texture
+        # Load ground texture
         ground_texture = pv.read_texture(image_path)
         
-        # Create a flat plane for the image ground
+        # Create the ground plane
         image_plane = pv.Plane(
-            center=(img_width / 2, -img_height / 2, 0),  # Adjust center to align properly
+            center=(img_width / 2, -img_height / 2, 0),
             i_size=i_size,
             j_size=j_size,
-            direction=(0, 0, 1)  # Keep the plane flat
+            direction=(0, 0, 1)
         )
         image_plane.texture_map_to_plane(inplace=True)
         plotter.add_mesh(image_plane, texture=ground_texture)
 
-        buildings = self.extract_building_data(coco_data)
+        # Extract buildings and trees
+        buildings = self.extract_object_data(coco_data, "Building")
+        trees = self.extract_object_data(coco_data, "Tree")
 
+        ## ---- ADD BUILDINGS ---- ##
         for footprint, height in buildings:
             footprint_3d = np.array([(x, -y, 0) for x, y in footprint])
             top_3d = np.array([(x, -y, height) for x, y in footprint])
@@ -401,20 +369,37 @@ class BuildingShadowMatcher:
             # Top face
             faces.append([len(footprint)] + list(range(len(footprint), len(all_points))))  
 
-            # Create the building mesh
+            # Create building mesh
             mesh = pv.PolyData(all_points, np.hstack(faces))
 
-            # Generate a random color for each building
+            # Random building color
             building_color = [random.random(), random.random(), random.random()]
             plotter.add_mesh(mesh, color=building_color, show_edges=True)
 
-        plotter.camera_position = 'iso'
+        ## ---- ADD TREES ---- ##
+        for footprint, height in trees:
+            # Tree position (assume centroid)
+            centroid = np.mean(footprint, axis=0)
+            x, y = centroid
 
-        # Export as GLB
+            # Create tree trunk (Cylinder)
+            trunk_radius = height * 0.1  # 10% of height
+            trunk = pv.Cylinder(center=(x, -y, trunk_radius), direction=(0, 0, 1), 
+                                radius=trunk_radius, height=height * 0.5)
+            plotter.add_mesh(trunk, color=(0.55, 0.27, 0.07))  # Brown trunk
+
+            # Create tree canopy (Sphere)
+            canopy_radius = height * 0.4  # 40% of height
+            canopy = pv.Sphere(center=(x, -y, height * 0.75), radius=canopy_radius)
+            plotter.add_mesh(canopy, color=(0.13, 0.55, 0.13))  # Green canopy
+
+        ## ---- EXPORT MODEL ---- ##
+        plotter.camera_position = 'iso'
         output_glb_path = os.path.join(output_path, "3d_model.glb")
         plotter.export_gltf(output_glb_path)
 
         return output_glb_path
+
 
 
 
