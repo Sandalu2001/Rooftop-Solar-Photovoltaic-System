@@ -1,6 +1,5 @@
 import { SelectChangeEvent } from "@mui/material";
 import { ReactNode } from "react";
-import { ProductsInCart } from "./order.type";
 
 export interface TabPanelProps {
   children?: React.ReactNode;
@@ -13,41 +12,6 @@ export interface TabProps {
   tabPath: string;
   icon: React.ReactElement<any, string | React.JSXElementConstructor<any>>;
   component: React.ReactNode;
-}
-
-export interface OrderedProductCardProps {
-  product: ProductsInCart;
-}
-
-export interface SupplierInfoCardProps {
-  orderId: number;
-  expectedTotal: number;
-  FinalTotal?: number;
-  noOfItems: number;
-  supplier: string;
-  date: string;
-  status: string;
-  products: Product[];
-}
-
-export interface Product {
-  productName: string;
-  price: number;
-  quantity: number;
-}
-
-export enum OrderStatus {
-  PENDING = "Pending",
-  ONDELIVERY = "OnDelivery",
-  DELIVERED = "Delivered",
-  CANCELLED = "Canceled",
-}
-
-export interface EmployeeInfoCardProps {
-  userName: string;
-  userEmail: string;
-  userPhoneNumber: string;
-  branch: string;
 }
 
 export interface ItemCounterProps {
@@ -64,16 +28,6 @@ export interface DataCardProps {
   branchName?: string;
 }
 
-export interface AddOrderModalProps {
-  open: boolean;
-  handleClose: () => void;
-}
-
-export interface AddProductModalProps {
-  open: boolean;
-  handleClose: () => void;
-}
-
 export interface ResetPasswordProps {
   open: boolean;
   handleClose: () => void;
@@ -84,6 +38,7 @@ export interface CustomFormFieldProps {
   label: string;
   value: string | number;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   error?: boolean;
   helperText?: React.ReactNode;
   type: React.HTMLInputTypeAttribute | undefined;
@@ -147,4 +102,66 @@ export enum AuthState {
 
 export interface StepperInterface {
   setActiveStep: (step: number) => void;
+}
+
+export interface OfferDocument {
+  contentName: string;
+  contentType: string;
+  attachment: any;
+}
+
+export interface CocoDataInterface {
+  coco_output: {
+    images: {
+      id: number;
+      file_name: string;
+      height: number;
+      width: number;
+    }[];
+    annotations: {
+      id: number;
+      image_id: number;
+      category_id: number;
+      segmentation: number[][];
+      bbox: number[];
+      area: number;
+      iscrowd: number;
+      score: number;
+    }[];
+    categories: {
+      id: number;
+      name: string;
+    }[];
+  };
+}
+
+export interface AnnotoriousAnnotation {
+  annotation: {
+    id: string;
+    bodies: {
+      value: string;
+      purpose: string;
+      annotation?: string;
+    }[];
+    target: {
+      selector: {
+        type: string;
+        geometry: {
+          bounds: {
+            minX: number;
+            minY: number;
+            maxX: number;
+            maxY: number;
+          };
+          points: [number, number][];
+        };
+      };
+      creator?: {
+        isGuest: boolean;
+        id: string;
+      };
+      created?: string;
+    };
+  };
+  editable?: boolean;
 }
