@@ -136,32 +136,29 @@ export interface CocoDataInterface {
 }
 
 export interface AnnotoriousAnnotation {
-  annotation: {
-    id: string;
-    bodies: {
-      value: string;
-      purpose: string;
-      annotation?: string;
-    }[];
-    target: {
-      selector: {
-        type: string;
-        geometry: {
-          bounds: {
-            minX: number;
-            minY: number;
-            maxX: number;
-            maxY: number;
-          };
-          points: [number, number][];
+  id: string;
+  bodies: {
+    value: string;
+    purpose: string;
+    annotation?: string;
+  }[];
+  target: {
+    selector: {
+      type: string;
+      geometry: {
+        bounds: {
+          minX: number;
+          minY: number;
+          maxX: number;
+          maxY: number;
         };
+        points: [number, number][];
       };
-      creator?: {
-        isGuest: boolean;
-        id: string;
-      };
-      created?: string;
     };
+    creator?: {
+      isGuest: boolean;
+      id: string;
+    };
+    created?: string;
   };
-  editable?: boolean;
 }
