@@ -7,5 +7,5 @@ export enum ClassTypes {
   BUILDING = "Building",
   BUILDINGSHADOW = "Shadow",
   TREE = "Tree",
-  THREESHADOW = "Tree-shadow",
+  THREESHADOW = "Tree_Shadow",
 }
