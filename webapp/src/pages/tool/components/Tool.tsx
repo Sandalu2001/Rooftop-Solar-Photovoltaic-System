@@ -35,7 +35,7 @@ import {
 import { useAppDispatch, useAppSelector } from "../../../slices/store";
 import { ClassTypes } from "../../../types/enums";
 import CustomIconButton from "../../../components/common/CustomIconButton";
-import { getPairs } from "../../../slices/solar-slice";
+import { get3DModel, getPairs } from "../../../slices/solar-slice";
 
 const Tool = ({ setActiveStep }: StepperInterface) => {
   const [selectedClass, setSelectedClass] = useState<ClassTypes>(
@@ -383,12 +383,13 @@ languages to more easily compare and strategize"
                 size="large"
                 onClick={() =>
                   dispatch(
-                    getPairs(
-                      convertAnnotoriousToCOCO(
+                    get3DModel({
+                      image,
+                      cocoData: convertAnnotoriousToCOCO(
                         annotations as any,
                         cocoAnnotations.coco_output.images[0]
-                      )
-                    )
+                      ),
+                    })
                   )
                 }
                 sx={{
@@ -479,6 +480,8 @@ languages to more easily compare and strategize"
           <MoreVertIcon />
         </IconButton>
       </Stack>
+
+      {/* <ShadowSimulation /> */}
     </Stack>
   );
 };
