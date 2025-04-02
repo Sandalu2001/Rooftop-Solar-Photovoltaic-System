@@ -1,27 +1,27 @@
 import dayjs from "dayjs";
 import { REQUIRED, TYPERROR } from "../configs/constants";
 import * as yup from "yup";
-import { CocoDataInterface, OfferDocument } from "../types/componentInterfaces";
+import {
+  AnnotoriousAnnotation,
+  CocoDataInterface,
+} from "../types/componentInterfaces";
+import { ClassTypes } from "../types/enums";
 
+// -------------------------- Annotorious to COCO -------------------------- //
 export function convertAnnotoriousToCOCO(
   annotations: AnnotoriousAnnotation[],
-  categories: CocoDataInterface["coco_output"]["categories"],
   imageMetadata: CocoDataInterface["coco_output"]["images"][0]
 ): CocoDataInterface {
-  // Prepare categories if not provided
-  const defaultCategories: CocoDataInterface["coco_output"]["categories"] =
-    categories.length > 0
-      ? categories
-      : [
-          { id: 1, name: "Building" },
-          { id: 2, name: "Object" },
-          { id: 3, name: "Person" },
-        ];
+  const defaultCategories: CocoDataInterface["coco_output"]["categories"] = [
+    { id: 1, name: ClassTypes.BUILDING },
+    { id: 2, name: ClassTypes.BUILDINGSHADOW },
+    { id: 3, name: ClassTypes.TREE },
+    { id: 4, name: ClassTypes.THREESHADOW },
+  ];
 
   // Convert annotations
   const convertedAnnotations = annotations.map((annotoriousAnn, index) => {
-    const { points, bounds } =
-      annotoriousAnn.annotation.target.selector.geometry;
+    const { points, bounds } = annotoriousAnn.target.selector.geometry;
 
     // Flatten points for segmentation
     const segmentation = [points.flat()];
@@ -43,8 +43,7 @@ export function convertAnnotoriousToCOCO(
     );
 
     // Find category ID
-    const categoryName =
-      annotoriousAnn.annotation.bodies[0]?.value || "Unknown";
+    const categoryName = annotoriousAnn.bodies[0]?.value || "Unknown";
     const category = defaultCategories.find(
       (cat) => cat.name.toLowerCase() === categoryName.toLowerCase()
     );
@@ -70,11 +69,13 @@ export function convertAnnotoriousToCOCO(
     },
   };
 }
+// -------------------------- Annotorious to COCO -------------------------- //
 
+// -------------------------- COCO to Annotorious -------------------------- //
 export const convertCOCOToAnnotorious = (cocoData: CocoDataInterface) => {
   return cocoData.coco_output.annotations
     .map((ann) => {
-      if (!ann.segmentation || ann.segmentation.length === 0) return null; // Skip invalid annotations
+      if (!ann.segmentation || ann.segmentation.length === 0) return null;
 
       // Extract polygon points, handling multiple segmentations
       const points: [number, number][][] = ann.segmentation.map((segment) =>
@@ -123,37 +124,7 @@ export const convertCOCOToAnnotorious = (cocoData: CocoDataInterface) => {
     })
     .filter(Boolean);
 };
-
-export interface AnnotoriousAnnotation {
-  annotation: {
-    id: string;
-    bodies: {
-      value: string;
-      purpose: string;
-      annotation?: string;
-    }[];
-    target: {
-      selector: {
-        type: string;
-        geometry: {
-          bounds: {
-            minX: number;
-            minY: number;
-            maxX: number;
-            maxY: number;
-          };
-          points: [number, number][];
-        };
-      };
-      creator?: {
-        isGuest: boolean;
-        id: string;
-      };
-      created?: string;
-    };
-  };
-  editable?: boolean;
-}
+// -------------------------- COCO to Annotorious -------------------------- //
 
 export const uploadImageSchema = yup.object({
   dataset: yup.string().required(REQUIRED),
