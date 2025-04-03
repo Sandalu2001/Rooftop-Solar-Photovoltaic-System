@@ -22,12 +22,12 @@ const CustomFormSelectField = ({
 }: CustomFormSelectFieldProps) => {
   return (
     <>
-      <Grid item xs={4}>
+      <Grid size={4}>
         <Typography variant="h6" color={"GrayText"}>
           {label}
         </Typography>
       </Grid>
-      <Grid item xs={8}>
+      <Grid size={8}>
         <FormControl size="small" fullWidth required>
           <Select
             id={name}

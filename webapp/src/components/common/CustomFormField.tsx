@@ -13,12 +13,12 @@ const CustomFormField = ({
 }: CustomFormFieldProps) => {
   return (
     <>
-      <Grid item xs={4}>
+      <Grid size={4}>
         <Typography variant="h6" color={"GrayText"}>
           {label}
         </Typography>
       </Grid>
-      <Grid item xs={8}>
+      <Grid size={8}>
         <TextField
           required
           id={name}
