@@ -131,15 +131,13 @@ export const uploadImageSchema = yup.object({
   latitude: yup.number().required(REQUIRED).typeError(TYPERROR),
   longtitude: yup.number().required(REQUIRED).typeError(TYPERROR),
   date: yup.date().required(REQUIRED),
-  file: yup
-    .mixed()
-    .required(REQUIRED)
-    .test("fileSize", "File size is too large (Max: 20MB)", (value) => {
-      return value && value.size <= 20 * 1024 * 1024; // 2MB limit
-    })
-    .test("fileType", "Only image files are allowed", (value) => {
-      return (
-        value && ["image/png", "image/jpeg", "image/jpg"].includes(value.type)
-      );
-    }),
+  file: yup.mixed().required(REQUIRED),
+  // .test("fileSize", "File size is too large (Max: 20MB)", (value) => {
+  //   return value && value.size <= 20 * 1024 * 1024; // 2MB limit
+  // })
+  // .test("fileType", "Only image files are allowed", (value) => {
+  //   return (
+  //     value && ["image/png", "image/jpeg", "image/jpg"].includes(value.type)
+  //   );
+  // }),
 });
