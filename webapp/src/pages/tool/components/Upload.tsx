@@ -32,6 +32,7 @@ import { enqueueSnackbarMessage } from "../../../slices/commonSlice/common";
 import { State } from "../../../types/common.type";
 import { LoadingButton } from "@mui/lab";
 import GLBViewer from "./Visualizer";
+import Visualizer1 from "./Scene";
 
 const Upload = ({ setActiveStep }: StepperInterface) => {
   const [image, setImage] = useState<File | null>(null);
@@ -390,7 +391,8 @@ languages to more easily compare and strategize"
         Get the insights
       </LoadingButton>
 
-      <GLBViewer />
+      {/* <GLBViewer /> */}
+      <Visualizer1 />
 
       <Stack />
     </Stack>
