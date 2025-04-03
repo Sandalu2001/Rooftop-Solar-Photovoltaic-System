@@ -297,12 +297,12 @@ languages to more easily compare and strategize"
               onBlur={formik.handleBlur}
               type={"text"}
             />
-            <Grid item xs={4}>
+            <Grid size={4}>
               <Typography variant="h6" color={"GrayText"}>
                 {"Date"}
               </Typography>
             </Grid>
-            <Grid item xs={8}>
+            <Grid size={8}>
               <FormControl
                 fullWidth
                 size="small"
@@ -390,7 +390,7 @@ languages to more easily compare and strategize"
         Get the insights
       </LoadingButton>
 
-      <GLBViewer fileUrl={"../../../assets/3d_model.glb"} />
+      <GLBViewer />
 
       <Stack />
     </Stack>
