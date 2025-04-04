@@ -14,5 +14,6 @@ export const AppConfig = {
     makeOrder: ServiceBaseUrl + "/orders",
     getAnnotation: ServiceBaseUrl + "/convert",
     getPairs: ServiceBaseUrl + "/centroid",
+    get3DModel: ServiceBaseUrl + "/centroid",
   },
 };

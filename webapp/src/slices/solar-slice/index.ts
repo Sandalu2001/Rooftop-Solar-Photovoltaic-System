@@ -9,16 +9,20 @@ interface SolarSliceInterface {
   predictionState: State;
   addNewProductState: State;
   getPairsState: State;
+  modelState: State;
   cocoJSON: CocoDataInterface;
   image: File | null;
   Image3D: File | null;
+  coco3DJSON: CocoDataInterface;
 }
 
 const initialState: SolarSliceInterface = {
   predictionState: State.IDLE,
   getPairsState: State.IDLE,
+  modelState: State.IDLE,
   addNewProductState: State.IDLE,
   cocoJSON: { coco_output: { images: [], annotations: [], categories: [] } },
+  coco3DJSON: { coco_output: { images: [], annotations: [], categories: [] } },
   image: null,
   Image3D: null,
 };
@@ -64,17 +68,18 @@ const SolarSlice = createSlice({
     });
 
     builder.addCase(get3DModel.pending, (state, action) => {
-      state.predictionState = State.LOADING;
+      state.modelState = State.LOADING;
     });
     builder.addCase(
       get3DModel.fulfilled,
       (state, action: PayloadAction<File>) => {
-        state.predictionState = State.SUCCESS;
+        state.modelState = State.SUCCESS;
         state.Image3D = action.payload;
+        console.log("Picture reseved");
       }
     );
     builder.addCase(get3DModel.rejected, (state, action) => {
-      state.predictionState = State.FAILED;
+      state.modelState = State.FAILED;
     });
   },
 });
@@ -150,10 +155,10 @@ export const get3DModel = createAsyncThunk(
         "image",
         data.image ? data.image : new File([""], "filename")
       );
-      formData.append("cocoData", JSON.stringify(data.cocoData));
+      formData.append("json", JSON.stringify(data.cocoData));
 
       const resp = await APIService.getInstance().postForm(
-        AppConfig.serviceUrls.getAnnotation,
+        AppConfig.serviceUrls.get3DModel,
         formData
       );
       dispatch(

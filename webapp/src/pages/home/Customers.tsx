@@ -27,21 +27,21 @@ const Customers = () => {
           </Stack>
 
           <Grid container rowSpacing={1} columnSpacing={4}>
-            <Grid item sm={4}>
+            <Grid size={4}>
               <DataCard
                 color={"inherit"}
                 title="A Responsible Corparate"
                 subTitle="Save on your electricity bills, reduce your carbon footprint and increase the value of your home"
               />
             </Grid>
-            <Grid item sm={4}>
+            <Grid size={4}>
               <DataCard
                 color={"fade"}
                 title="A Responsible Corparate"
                 subTitle="Save on your electricity bills, reduce your carbon footprint and increase the value of your home"
               />{" "}
             </Grid>
-            <Grid item sm={4}>
+            <Grid size={4}>
               <DataCard
                 color={"inherit"}
                 title="A Responsible Corparate"
@@ -80,28 +80,28 @@ const Customers = () => {
             <Divider />
 
             <Grid container rowSpacing={1} columnSpacing={4}>
-              <Grid item sm={3}>
+              <Grid size={3}>
                 <BasicDataCard
                   color={"inherit"}
                   title="A Responsible Corparate"
                   subTitle="Save on your electricity bills, reduce your carbon footprint and increase the value of your home"
                 />
               </Grid>
-              <Grid item sm={3}>
+              <Grid size={3}>
                 <BasicDataCard
                   color={"dark"}
                   title="A Responsible Corparate"
                   subTitle="Save on your electricity bills, reduce your carbon footprint and increase the value of your home"
                 />{" "}
               </Grid>
-              <Grid item sm={3}>
+              <Grid size={3}>
                 <BasicDataCard
                   color={"inherit"}
                   title="A Responsible Corparate"
                   subTitle="Save on your electricity bills, reduce your carbon footprint and increase the value of your home"
                 />{" "}
               </Grid>
-              <Grid item sm={3}>
+              <Grid size={3}>
                 <BasicDataCard
                   color={"inherit"}
                   title="A Responsible Corparate"

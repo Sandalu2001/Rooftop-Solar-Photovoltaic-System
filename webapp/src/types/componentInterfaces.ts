@@ -1,5 +1,5 @@
 import { SelectChangeEvent } from "@mui/material";
-import { ReactNode } from "react";
+import { JSX, ReactNode } from "react";
 
 export interface TabPanelProps {
   children?: React.ReactNode;
