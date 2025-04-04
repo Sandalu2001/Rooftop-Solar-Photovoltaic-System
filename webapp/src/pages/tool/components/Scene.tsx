@@ -1,8 +1,9 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 import Lights from "./Lights";
 import * as THREE from "three";
+import { object } from "yup";
 
 // Green - Y
 // Blue - Z
@@ -19,7 +20,6 @@ const Object = ({
   height: number;
   categoryId: number;
 }) => {
-  // Create base shape
   const shape = useMemo(() => {
     const newShape = new THREE.Shape();
     if (Array.isArray(segmentation) && segmentation.length > 0) {
@@ -40,10 +40,12 @@ const Object = ({
 
   // Extrude the shape into 3D
   const extrudeSettings = {
-    depth: height / SCALE_FACTOR,
+    depth:
+      categoryId === 1 ? height / SCALE_FACTOR : (height * 0.4) / SCALE_FACTOR,
     bevelEnabled: false,
+    steps: 2,
   };
-  const extrudedGeometry = useMemo(
+  const basedGeometry = useMemo(
     () => new THREE.ExtrudeGeometry(shape, extrudeSettings),
     [shape]
   );
@@ -51,34 +53,94 @@ const Object = ({
   // Create the top face geometry
   const topGeometry = useMemo(() => new THREE.ShapeGeometry(shape), [shape]);
 
+  //----------Tree Canopy--------//
+  const extrudeTreeTopSettings = {
+    depth: (height * 0.6) / SCALE_FACTOR,
+    bevelEnabled: false,
+    steps: 2,
+  };
+
+  const topTreeGeometry = useMemo(
+    () => new THREE.ExtrudeGeometry(shape, extrudeTreeTopSettings),
+    [shape]
+  );
+  //----------------------------//
+
+  //-------- Tree Trunk Cylinder -----------//
+  const trunkHeight = (height * 0.4) / SCALE_FACTOR; // Trunk takes up 40% of height
+  const trunkGeometry = useMemo(
+    () => new THREE.ExtrudeGeometry(shape, extrudeSettings),
+    [shape]
+  );
+  //--------------------------------------//
+
   return (
     <group rotation={[-Math.PI / 2, 0, 0]} position={[2.2, 0, 1.6]}>
-      {/* Main extruded object */}
-      <mesh
-        geometry={extrudedGeometry}
-        castShadow
-        receiveShadow
-        scale={[-1, 1, 1]} // Invert the mesh to face the camera
-      >
-        <meshStandardMaterial
-          color={categoryId === 1 ? "yellow" : "lime"}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {categoryId === 3 ? (
+        <>
+          <>
+            {/* Trunk */}
+            <mesh
+              geometry={trunkGeometry}
+              castShadow
+              receiveShadow
+              scale={[-1, 1, 1]}
+            >
+              <meshStandardMaterial color={"brown"} side={THREE.DoubleSide} />
+            </mesh>
 
-      {/* Top face positioned at the object's top */}
-      <mesh
-        geometry={topGeometry}
-        position={[0, 0, height / SCALE_FACTOR]}
-        castShadow
-        receiveShadow
-        scale={[-1, 1, 1]}
-      >
-        <meshStandardMaterial
-          color={categoryId === 1 ? "yellow" : "lime"}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+            {/* Canopy */}
+            <mesh
+              geometry={topTreeGeometry}
+              position={[0, 0, (height * 0.4) / SCALE_FACTOR]}
+              castShadow
+              receiveShadow
+              scale={[-1, 1, 1]}
+            >
+              <meshStandardMaterial color={"lime"} side={THREE.DoubleSide} />
+            </mesh>
+
+            {/* Top Face Of the Canopy */}
+            <mesh
+              geometry={topGeometry}
+              position={[0, 0, height / SCALE_FACTOR]}
+              castShadow
+              receiveShadow
+              scale={[-1, 1, 1]}
+            >
+              <meshStandardMaterial color={"lime"} side={THREE.DoubleSide} />
+            </mesh>
+          </>
+        </>
+      ) : (
+        <>
+          <mesh
+            geometry={basedGeometry}
+            castShadow
+            receiveShadow
+            scale={[-1, 1, 1]} // Invert the mesh to face the camera
+          >
+            <meshStandardMaterial
+              color={categoryId === 1 ? "yellow" : "lime"}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+
+          {/* Top face positioned at the object's top */}
+          <mesh
+            geometry={topGeometry}
+            position={[0, 0, height / SCALE_FACTOR]}
+            castShadow
+            receiveShadow
+            scale={[-1, 1, 1]}
+          >
+            <meshStandardMaterial
+              color={categoryId === 1 ? "yellow" : "lime"}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </>
+      )}
     </group>
   );
 };
@@ -324,7 +386,7 @@ const Visualizer1 = () => {
   ];
 
   return (
-    <div style={{ width: "100vw", height: "100vh", background: "red" }}>
+    <div style={{ width: "100vw", height: "100vh" }}>
       <Suspense fallback={<div>Loading...</div>}>
         <Canvas
           camera={{
