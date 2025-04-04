@@ -392,7 +392,7 @@ languages to more easily compare and strategize"
       </LoadingButton>
 
       {/* <GLBViewer /> */}
-      <Visualizer1 />
+      {/* <Visualizer1 /> */}
 
       <Stack />
     </Stack>
