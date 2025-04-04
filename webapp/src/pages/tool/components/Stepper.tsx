@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Stepper, Step, StepLabel, Box } from "@mui/material";
+import { Stepper, Step, StepLabel, Box, Typography } from "@mui/material";
 import Upload from "./Upload";
 import Tool from "./Tool";
+import Visualizer from "./Visualizer";
+import Visualizer1 from "./Scene";
 
 const StepperComponent = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -18,9 +20,9 @@ const StepperComponent = () => {
       case 1:
         return <Tool setActiveStep={setActiveStep} />;
       case 2:
-        return <Upload setActiveStep={setActiveStep} />;
+        return <Visualizer1 />;
       default:
-        return <Tool setActiveStep={setActiveStep} />;
+        return <Typography>Unknown Step</Typography>;
     }
   };
 
