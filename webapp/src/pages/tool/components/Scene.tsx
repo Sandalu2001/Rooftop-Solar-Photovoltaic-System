@@ -42,8 +42,8 @@ const Object = ({
   segmentation,
   height,
   categoryId,
-  treeTrunkRadiusFactor = 0.2,
-  treeCanopyRadiusFactor = 0.6,
+  treeTrunkRadiusFactor = 0.1,
+  treeCanopyRadiusFactor = 0.3,
   treeCanopyHeightFactor = 0.6,
   treeTrunkHeightFactor = 0.4,
   debug = true,
@@ -138,7 +138,7 @@ const Object = ({
   const polygonDepth = polygonBounds.depth;
 
   const trunkRadius =
-    Math.min(polygonWidth, polygonDepth) * treeTrunkRadiusFactor; // Trunk radius based on smaller polygon dimension
+    Math.min(polygonWidth, polygonDepth) * treeTrunkRadiusFactor;
   const trunkHeight = (height * treeTrunkHeightFactor) / SCALE_FACTOR;
   const trunkGeometry = useMemo(
     () => new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, 32),
@@ -148,11 +148,22 @@ const Object = ({
 
   //---------------Tree Canopy (Cone)---------------//
   const canopyRadius =
-    Math.max(polygonWidth, polygonDepth) * treeCanopyRadiusFactor; // Canopy radius based on larger polygon dimension
+    Math.max(polygonWidth, polygonDepth) * treeCanopyRadiusFactor;
   const canopyHeight = (height * treeCanopyHeightFactor) / SCALE_FACTOR;
   const canopyGeometry = useMemo(
     () => new THREE.ConeGeometry(canopyRadius, canopyHeight, 32),
     [canopyRadius, canopyHeight]
+  );
+
+  const canopyExtrudeSettings = {
+    depth: canopyHeight,
+    bevelEnabled: false,
+    steps: 100,
+  };
+
+  const canopyBasedGeometry = useMemo(
+    () => new THREE.ExtrudeGeometry(shape, canopyExtrudeSettings),
+    [shape]
   );
   //-----------------------------------------//
 
@@ -162,30 +173,10 @@ const Object = ({
     return calculateCentroid(scaledSegmentationPoints);
   }, [scaledSegmentationPoints]);
 
-  //-----------Debug Visualizations------------//
-  const polygonWireframeGeometry = useMemo(() => {
-    const wireframeShape = new THREE.Shape();
-    if (scaledSegmentationPoints.length >= 2) {
-      wireframeShape.moveTo(
-        scaledSegmentationPoints[0][0],
-        scaledSegmentationPoints[0][1]
-      );
-      for (let i = 1; i < scaledSegmentationPoints.length; i++) {
-        wireframeShape.lineTo(
-          scaledSegmentationPoints[i][0],
-          scaledSegmentationPoints[i][1]
-        );
-      }
-      wireframeShape.closePath();
-    }
-    return new THREE.WireframeGeometry(new THREE.ShapeGeometry(wireframeShape));
-  }, [scaledSegmentationPoints]);
-  //------------------------------------------//
-
   return (
     <group rotation={[-Math.PI / 2, 0, 0]} position={[-2, 0, 1.6]}>
       {categoryId === 3 ? (
-        <group rotateZ={Math.PI / 2}>
+        <group>
           {" "}
           {/* ADD GROUP AND ROTATE Z HERE */}
           {/* Trunk */}
@@ -200,10 +191,25 @@ const Object = ({
           </mesh>
           {/* Canopy (Cone) */}
           <mesh
-            geometry={canopyGeometry}
-            position={[centroid.x, centroid.y, trunkHeight + canopyHeight / 2]}
+            geometry={canopyBasedGeometry}
             castShadow
-            rotation={[Math.PI / 2, -2, 0]}
+            receiveShadow
+            position={[0, 0, trunkHeight]}
+          >
+            <meshStandardMaterial color={"lime"} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh
+            geometry={topGeometry}
+            position={[0, 0, trunkHeight]}
+            castShadow
+            receiveShadow
+          >
+            <meshStandardMaterial color={"lime"} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh
+            geometry={topGeometry}
+            position={[0, 0, height / SCALE_FACTOR]}
+            castShadow
             receiveShadow
           >
             <meshStandardMaterial color={"lime"} side={THREE.DoubleSide} />
@@ -232,17 +238,6 @@ const Object = ({
           </mesh>
         </>
       )}
-
-      {/* -------- DEBUG VISUALIZATIONS --------- */}
-      {debug && (
-        <>
-          {/* Polygon Wireframe */}
-          <lineSegments geometry={polygonWireframeGeometry}>
-            <lineBasicMaterial color="blue" />
-          </lineSegments>
-        </>
-      )}
-      {/* ------------------------------------- */}
     </group>
   );
 };
