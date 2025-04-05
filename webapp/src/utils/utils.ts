@@ -6,6 +6,7 @@ import {
   CocoDataInterface,
 } from "../types/componentInterfaces";
 import { ClassTypes } from "../types/enums";
+import * as THREE from "three";
 
 // -------------------------- Annotorious to COCO -------------------------- //
 export function convertAnnotoriousToCOCO(
@@ -141,3 +142,57 @@ export const uploadImageSchema = yup.object({
   //   );
   // }),
 });
+
+//-------- Calculate Centroid Function -----------//
+export const calculateCentroid = (points: number[][]) => {
+  let area = 0;
+  let centroidX = 0;
+  let centroidY = 0;
+  const n = points.length;
+
+  for (let i = 0; i < n; i++) {
+    const p1 = points[i];
+    const p2 = points[(i + 1) % n]; // Next point, wrap around
+
+    const term = p1[0] * p2[1] - p2[0] * p1[1];
+    area += term;
+    centroidX += (p1[0] + p2[0]) * term;
+    centroidY += (p1[1] + p2[1]) * term;
+  }
+
+  area = 0.5 * area;
+  centroidX = centroidX / (6 * area);
+  centroidY = centroidY / (6 * area);
+
+  return { x: centroidX, y: centroidY };
+};
+
+//---------------------------------------------//
+
+export function getGradientColor(intensity: number, isShadowed: boolean) {
+  const color = new THREE.Color();
+
+  if (isShadowed) {
+    // Radiant Blue for Shadowed Areas
+    color.lerpColors(
+      new THREE.Color("#007bff"), // Radiant blue
+      new THREE.Color("black"), // Fade to black for deeper shadow (optional)
+      intensity // Intensity here represents shadow strength (0=full shadow, 1=no shadow in this context)
+    );
+  } else if (intensity < 0.5) {
+    // Red to Yellow for lower direct light
+    color.lerpColors(
+      new THREE.Color("red"),
+      new THREE.Color("yellow"),
+      intensity * 2
+    );
+  } else {
+    // Yellow to Green for higher direct light
+    color.lerpColors(
+      new THREE.Color("yellow"),
+      new THREE.Color("green"),
+      (intensity - 0.5) * 2
+    );
+  }
+  return color;
+}
