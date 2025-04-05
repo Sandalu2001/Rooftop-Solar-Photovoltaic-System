@@ -127,6 +127,7 @@ export interface CocoDataInterface {
       area: number;
       iscrowd: number;
       score: number;
+      object_height?: number;
     }[];
     categories: {
       id: number;
