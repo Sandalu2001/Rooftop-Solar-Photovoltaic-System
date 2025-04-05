@@ -4,6 +4,10 @@ import { AppConfig } from "../../configs/configs";
 import { State } from "../../types/common.type";
 import { enqueueSnackbarMessage } from "../commonSlice/common";
 import { CocoDataInterface } from "../../types/componentInterfaces";
+import { type } from "os";
+import { error, log, warn } from "console";
+import { encode, stringify } from "querystring";
+import { arrayBuffer, buffer } from "stream/consumers";
 
 interface SolarSliceInterface {
   predictionState: State;
@@ -75,10 +79,24 @@ const SolarSlice = createSlice({
       (state, action: PayloadAction<File>) => {
         state.modelState = State.SUCCESS;
         state.Image3D = action.payload;
-        console.log("Picture reseved");
       }
     );
     builder.addCase(get3DModel.rejected, (state, action) => {
+      state.modelState = State.FAILED;
+    });
+
+    builder.addCase(get3DObjectJSON.pending, (state, action) => {
+      state.modelState = State.LOADING;
+    });
+    builder.addCase(
+      get3DObjectJSON.fulfilled,
+      (state, action: PayloadAction<CocoDataInterface>) => {
+        state.modelState = State.SUCCESS;
+        state.coco3DJSON = action.payload; // Assuming action.payload is a File object
+        console.log("3D Model file received");
+      }
+    );
+    builder.addCase(get3DObjectJSON.rejected, (state, action) => {
       state.modelState = State.FAILED;
     });
   },
@@ -143,42 +161,126 @@ export const getPairs = createAsyncThunk(
   }
 );
 
-export const get3DModel = createAsyncThunk(
-  "get3DModel",
-  async (
-    data: { image: File | null; cocoData: CocoDataInterface },
-    { dispatch }
-  ) => {
-    try {
-      const formData = new FormData();
-      formData.append(
-        "image",
-        data.image ? data.image : new File([""], "filename")
-      );
-      formData.append("json", JSON.stringify(data.cocoData));
+export const get3DModel = createAsyncThunk<
+  File,
+  { image: File | null; cocoData: CocoDataInterface }
+>("get3DModel", async (data, { dispatch }) => {
+  try {
+    const formData = new FormData();
+    formData.append(
+      "image",
+      data.image ? data.image : new File([""], "filename")
+    );
+    formData.append("json", JSON.stringify(data.cocoData));
 
-      const resp = await APIService.getInstance().postForm(
-        AppConfig.serviceUrls.get3DModel,
-        formData
-      );
-      dispatch(
-        enqueueSnackbarMessage({
-          message: "SnackMessage.success.sendHiringDetails",
-          type: "success",
-        })
-      );
-      return resp.data;
-    } catch (error) {
-      dispatch(
-        enqueueSnackbarMessage({
-          message: "SnackMessage.error.sendHiringDetails",
+    const resp = await APIService.getInstance().postForm(
+      AppConfig.serviceUrls.get3DModel,
+      formData
+    );
 
-          type: "error",
-        })
+    dispatch(
+      enqueueSnackbarMessage({
+        message: "SnackMessage.success.sendHiringDetails",
+        type: "success",
+      })
+    );
+
+    console.log("Response Headers:", resp.headers);
+    console.log("resp.data:", resp.data);
+    console.log("typeof resp.data:", typeof resp.data);
+
+    let modelData: ArrayBuffer | null = null; // Initialize as null
+
+    if (resp.data instanceof ArrayBuffer) {
+      console.log(
+        "resp.data is ArrayBuffer, byteLength:",
+        resp.data.byteLength
       );
-      return error;
+      modelData = resp.data; // Data is already ArrayBuffer - perfect!
+    } else if (resp.data instanceof Blob) {
+      console.log("resp.data is Blob, size:", resp.data.size);
+      modelData = await resp.data.arrayBuffer(); // Convert Blob to ArrayBuffer
+      console.log(
+        "Blob read as ArrayBuffer, byteLength:",
+        modelData.byteLength
+      );
+    } else if (typeof resp.data === "string") {
+      console.warn(
+        "WARNING: resp.data is STRING - This is likely INCORRECT for binary .glb data. Check your APIService configuration!"
+      );
+      console.warn(
+        "Attempting to convert string to ArrayBuffer as a workaround, but data loss may occur."
+      );
+      // **VERY IMPORTANT: String to ArrayBuffer conversion is NOT ideal for binary data.**
+      // **This is a WORKAROUND. The REAL FIX is to ensure your APIService fetches binary data correctly.**
+      const encoder = new TextEncoder(); // Use TextEncoder to convert string to Uint8Array
+      const uint8Array = encoder.encode(resp.data); // Encode the string to Uint8Array
+      modelData = uint8Array.buffer; // Get the ArrayBuffer from Uint8Array
+      console.log(
+        "String converted to ArrayBuffer, byteLength:",
+        modelData.byteLength
+      );
+    } else {
+      console.error(
+        "resp.data is NOT ArrayBuffer, Blob, or String - UNEXPECTED TYPE!"
+      );
+      throw new Error("Unexpected data type received for 3D model."); // Stop processing if unexpected type
     }
+
+    if (!modelData) {
+      throw new Error("Failed to obtain ArrayBuffer for 3D model data."); // Error if modelData is still null
+    }
+
+    const file = new File([modelData], "model.glb", {
+      // Use the ArrayBuffer (or null if conversion failed)
+      type: "model/gltf-binary",
+    });
+    return file;
+  } catch (error) {
+    dispatch(
+      enqueueSnackbarMessage({
+        message: "SnackMessage.error.sendHiringDetails",
+        type: "error",
+      })
+    );
+    throw error;
   }
-);
+});
+
+export const get3DObjectJSON = createAsyncThunk<
+  CocoDataInterface,
+  { image: File | null; cocoData: CocoDataInterface }
+>("get3DObjectJSON", async (data, { dispatch }) => {
+  try {
+    const formData = new FormData();
+    formData.append(
+      "image",
+      data.image ? data.image : new File([""], "filename")
+    );
+    formData.append("json", JSON.stringify(data.cocoData));
+
+    const resp = await APIService.getInstance().postForm(
+      AppConfig.serviceUrls.get3DModel,
+      formData
+    );
+
+    dispatch(
+      enqueueSnackbarMessage({
+        message: "Successfully fetched coco data ;)",
+        type: "success",
+      })
+    );
+    return resp.data;
+  } catch (error) {
+    dispatch(
+      enqueueSnackbarMessage({
+        message: "Something went wrong :(",
+        type: "error",
+      })
+    );
+    throw error;
+  }
+});
+
 export const { setUpdatePredictionState, setImageData } = SolarSlice.actions;
 export default SolarSlice.reducer;
