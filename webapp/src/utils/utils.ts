@@ -175,17 +175,10 @@ export function getGradientColor(
 ) {
   const color = new THREE.Color();
 
-  console.log(
-    "DIRECT LIGHT INTENSITY",
-    directLightIntensity,
-    "SHADOWED",
-    isShadowed
-  );
-
-  if (isShadowed && directLightIntensity == 1) {
+  if (directLightIntensity == 1) {
     // Radiant Blue to Black for Shadowed Areas (shadowIntensity now 0 to 1, 1=full shadow)
     color.lerpColors(
-      new THREE.Color("black"), // Radiant blue (base shadowed color)
+      new THREE.Color("blue"), // Radiant blue (base shadowed color)
       new THREE.Color("blue"), // Fade to black for deeper shadow
       1 // intensity is now just a boolean isShadowed, so always full shadow color if shadowed
     );
