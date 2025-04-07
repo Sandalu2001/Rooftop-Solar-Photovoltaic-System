@@ -207,7 +207,7 @@ const Object = ({
 
         const intersectTargets: THREE.Object3D[] = [];
         scene.traverse((obj) => {
-          if (obj && obj !== mesh) {
+          if (obj instanceof THREE.Mesh && obj !== mesh) {
             intersectTargets.push(obj);
           }
         });
@@ -300,7 +300,11 @@ const Object = ({
       ) : (
         <>
           <mesh geometry={basedGeometry} castShadow receiveShadow>
-            <meshStandardMaterial color={"yellow"} side={THREE.DoubleSide} />
+            <meshStandardMaterial
+              color={"yellow"}
+              vertexColors={true}
+              side={THREE.DoubleSide}
+            />
           </mesh>
 
           <mesh
@@ -364,7 +368,7 @@ const Scene = ({
 
 const Visualizer1 = () => {
   const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
-  const [lightPositions, setLightPositions] = React.useState([110, 100, 40]);
+  const [lightPositions, setLightPositions] = React.useState([20, 100, 60]);
 
   // Check if coco3DJSON and coco_output arTHREE.e defined before accessing annotations
   const annotations = coco3DJSON?.coco_output?.annotations;
@@ -386,9 +390,9 @@ const Visualizer1 = () => {
               name="directionalLight"
               position={new THREE.Vector3(...lightPositions)} // Initial position (can be adjusted)
               castShadow
-              intensity={1}
+              intensity={1.2}
             />
-            <ambientLight intensity={1} position={[0, 0, 0]} />
+            <ambientLight intensity={0.7} position={[0, 0, 0]} />
             <Floor />
             <Scene
               annotations={annotations}
