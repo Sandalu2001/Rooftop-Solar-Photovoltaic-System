@@ -24,6 +24,7 @@ const Object = ({
   treeCanopyHeightFactor = 0.6,
   treeTrunkHeightFactor = 0.4,
   debug = true,
+  lightPositions,
 }: {
   segmentation: number[][];
   height: number;
@@ -33,6 +34,7 @@ const Object = ({
   treeCanopyHeightFactor?: number;
   treeTrunkHeightFactor?: number;
   debug?: boolean;
+  lightPositions: THREE.Vector3;
 }) => {
   // Scale segmentation points for centroid calculation
   const scaledSegmentationPoints = useMemo(() => {
@@ -74,9 +76,10 @@ const Object = ({
 
   //--------- Extrude the shape into 3D----------//
   const baseSettings = {
-    depth: height / 2 / SCALE_FACTOR,
+    depth: height / SCALE_FACTOR,
     bevelEnabled: false,
-    steps: 2,
+    steps: 1,
+    cap: true,
   };
 
   const basedGeometry = useMemo(
@@ -158,97 +161,107 @@ const Object = ({
 
   //-----------------------------------Shadow Simulation-----------------------//
 
-  const lightPosition = useRef<THREE.Vector3>(new THREE.Vector3()); // Ref to get light position
-  const meshRef = useRef<THREE.Mesh>(null); // Ref for the group mesh
+  const lightPosition = useRef<THREE.Vector3>(lightPositions); // Ref to get light position
+  const meshRef = useRef<THREE.Group>(null); // Ref for the group mesh
   const { scene } = useThree(); // Access the scene for raycasting
 
-  useFrame(() => {
-    if (!meshRef.current?.parent) {
+  useEffect(() => {
+    if (!meshRef.current || !meshRef.current?.parent) {
       console.log("Mesh parent not found");
       return;
     }
 
-    const directionalLight = scene.getObjectByName(
-      "directionalLight"
-    ) as THREE.DirectionalLight;
-    if (directionalLight) {
-      lightPosition.current.copy(directionalLight.position); // Update lightPosition HERE, every frame
-    }
+    // const directionalLight = scene.getObjectByName(
+    //   "directionalLight"
+    // ) as THREE.DirectionalLight;
+    // if (directionalLight) {
+    //   lightPosition.current.copy(directionalLight.position);
+    // }
 
-    const geometry = meshRef.current.geometry;
-    const positionAttribute = geometry.attributes.position;
-    const numVertices = geometry.attributes.position.count;
-    const shadowIntensities: number[] = [];
-    const isShadowedArray = [];
-    const raycaster = new THREE.Raycaster(); // Re-use raycaster and direction vector
+    const raycaster = new THREE.Raycaster();
     const rayDirection = new THREE.Vector3();
 
-    // const shadowIntensities = [];
+    // Iterate through all meshes inside meshRef
+    meshRef.current.children.forEach((child) => {
+      const mesh = child as THREE.Mesh;
+      const geometry = mesh.geometry;
+      const positionAttribute = geometry.attributes.position;
+      const numVertices = positionAttribute.count;
 
-    for (let i = 0; i < numVertices; i++) {
-      const vertex = new THREE.Vector3().fromBufferAttribute(
-        positionAttribute,
-        i
-      );
-      meshRef.current.localToWorld(vertex); // Convert to world space
+      const shadowIntensities: number[] = [];
+      const isShadowedArray = [];
 
-      rayDirection.subVectors(lightPosition.current, vertex).normalize();
-      raycaster.set(vertex, rayDirection);
+      geometry.computeVertexNormals();
 
-      const intersects: THREE.Intersection<
-        THREE.Object3D<THREE.Object3DEventMap>
-      >[] = raycaster.intersectObjects(
-        meshRef.current.parent.children.filter(
-          (obj) => obj !== meshRef.current
-        ),
-        true
-      );
+      for (let i = 0; i < numVertices; i++) {
+        const vertex = new THREE.Vector3().fromBufferAttribute(
+          positionAttribute,
+          i
+        );
+        mesh.localToWorld(vertex);
 
-      const occluded =
-        intersects.length > 0 &&
-        intersects[0].object !== meshRef.current &&
-        intersects[0].distance < vertex.distanceTo(lightPosition.current);
+        console.log(mesh.children);
 
-      let intensity = 1; // Default to full intensity if directly lit
-      let isShadowed = false;
+        rayDirection.subVectors(lightPosition.current, vertex).normalize();
+        raycaster.set(vertex, rayDirection);
 
-      if (occluded) {
-        isShadowed = true;
-        intensity = 0; // Shadowed, set intensity to 0 (or adjust for shadow strength if needed)
-      } else {
-        // Calculate intensity based on angle to light (dot product of normal and light direction)
-        const normal = new THREE.Vector3();
-        geometry.computeVertexNormals(); // Ensure normals are computed
-        normal.fromBufferAttribute(geometry.attributes.normal, i);
-        normal.transformDirection(meshRef.current.matrixWorld); // Transform normal to world space
+        const intersectTargets: THREE.Object3D[] = [];
+        scene.traverse((obj) => {
+          if (obj && obj !== mesh) {
+            intersectTargets.push(obj);
+          }
+        });
 
-        const lightDir = new THREE.Vector3().copy(rayDirection).negate(); // Direction from vertex to light
-        intensity = Math.max(0, normal.dot(lightDir)); // Dot product, clamped to 0-1
+        const intersects = raycaster.intersectObjects(intersectTargets, true);
+
+        const occluded =
+          intersects.length > 0 &&
+          intersects[0].object !== mesh &&
+          intersects[0].distance < vertex.distanceTo(lightPosition.current);
+
+        let intensity = 1;
+        let isShadowed = false;
+
+        if (occluded) {
+          isShadowed = true;
+        } else {
+          const normal = new THREE.Vector3();
+          geometry.computeVertexNormals(); // Ensure normals are computed
+          normal.fromBufferAttribute(geometry.attributes.normal, i);
+          normal.transformDirection(mesh.matrixWorld); // Transform normal to world space
+
+          const lightDir = new THREE.Vector3().copy(rayDirection).negate(); // Direction from vertex to light
+          intensity = Math.max(0, normal.dot(lightDir)); // Dot product, clamped to 0-1
+        }
+
+        shadowIntensities.push(intensity);
+        isShadowedArray.push(isShadowed);
       }
 
-      shadowIntensities.push(intensity);
-      isShadowedArray.push(isShadowed); // Store shadow status for each vertex
-    }
+      const colors = new Float32Array(numVertices * 3);
+      for (let i = 0; i < numVertices; i++) {
+        const color = getGradientColor(
+          shadowIntensities[i],
+          isShadowedArray[i]
+        );
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+      }
 
-    const colors = new Float32Array(numVertices * 3);
-    for (let i = 0; i < numVertices; i++) {
-      const color = getGradientColor(shadowIntensities[i], isShadowedArray[i]); // Pass isShadowed
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    geometry.attributes.color.needsUpdate = true;
-  });
+      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      geometry.attributes.color.needsUpdate = true;
+    });
+  }, [lightPosition]);
 
   return (
-    <group rotation={[-Math.PI / 2, 0, 0]} position={[-2, 0, 1.6]}>
+    <group
+      ref={meshRef}
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[-2, 0, 1.6]}
+    >
       {categoryId === 3 ? (
-        <group>
-          {" "}
-          {/* ADD GROUP AND ROTATE Z HERE */}
-          {/* Trunk */}
+        <>
           <mesh
             geometry={trunkGeometry}
             position={[centroid.x, centroid.y, trunkHeight / 2]}
@@ -281,35 +294,31 @@ const Object = ({
             castShadow
             receiveShadow
           >
-            <meshStandardMaterial color={"lime"} side={THREE.DoubleSide} />
-          </mesh>
-        </group>
-      ) : (
-        <>
-          <mesh geometry={basedGeometry} castShadow receiveShadow ref={meshRef}>
             <meshStandardMaterial vertexColors={true} side={THREE.DoubleSide} />
           </mesh>
-
-          {/* Top face positioned at the object's top */}
-          {/* <mesh
-            ref={meshRef}
-            geometry={topGeometry}
-            position={[0, 0, height / 2 / SCALE_FACTOR + 0.01]}
-            castShadow
-            receiveShadow
-            name="rooftopMesh"
-          >
-            <meshStandardMaterial vertexColors side={THREE.DoubleSide} />
-          </mesh> */}
+        </>
+      ) : (
+        <>
+          <mesh geometry={basedGeometry} castShadow receiveShadow>
+            <meshStandardMaterial color={"yellow"} side={THREE.DoubleSide} />
+          </mesh>
 
           <mesh
             geometry={topGeometry}
             castShadow
             receiveShadow
-            position={[0, 0, height / 2 / SCALE_FACTOR + 0.01]}
+            position={[0, 0, height / SCALE_FACTOR + 0.01]}
           >
-            <meshStandardMaterial color={"red"} side={THREE.DoubleSide} />{" "}
-            {/* Ensure both sides are rendered if needed */}
+            <meshStandardMaterial vertexColors={true} side={THREE.DoubleSide} />{" "}
+          </mesh>
+
+          <mesh
+            geometry={new THREE.BoxGeometry(0.2, 0.2, 0.2)}
+            castShadow
+            receiveShadow
+            position={[0.5, Math.random() * 2, Math.random() * 2]}
+          >
+            <meshStandardMaterial vertexColors={true} side={THREE.DoubleSide} />
           </mesh>
         </>
       )}
@@ -320,13 +329,19 @@ const Object = ({
 function Floor() {
   return (
     <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
-      <circleGeometry args={[4]} />
+      <circleGeometry args={[50]} />
       <meshStandardMaterial color="#fff" />
     </mesh>
   );
 }
 
-const Scene = ({ annotations }: { annotations: any[] }) => {
+const Scene = ({
+  annotations,
+  lightPositions,
+}: {
+  annotations: any[];
+  lightPositions: THREE.Vector3;
+}) => {
   return (
     <group position={[0, 0, 0]}>
       {annotations.map((item) => {
@@ -337,6 +352,7 @@ const Scene = ({ annotations }: { annotations: any[] }) => {
               segmentation={item.segmentation}
               height={item.object_height}
               categoryId={item.category_id}
+              lightPositions={lightPositions}
             />
           );
         }
@@ -348,6 +364,7 @@ const Scene = ({ annotations }: { annotations: any[] }) => {
 
 const Visualizer1 = () => {
   const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
+  const [lightPositions, setLightPositions] = React.useState([110, 100, 40]);
 
   // Check if coco3DJSON and coco_output arTHREE.e defined before accessing annotations
   const annotations = coco3DJSON?.coco_output?.annotations;
@@ -365,9 +382,18 @@ const Visualizer1 = () => {
             }}
             shadows
           >
-            <Lights />
+            <directionalLight
+              name="directionalLight"
+              position={new THREE.Vector3(...lightPositions)} // Initial position (can be adjusted)
+              castShadow
+              intensity={1}
+            />
+            <ambientLight intensity={1} position={[0, 0, 0]} />
             <Floor />
-            <Scene annotations={annotations} />
+            <Scene
+              annotations={annotations}
+              lightPositions={new THREE.Vector3(...lightPositions)}
+            />
             <OrbitControls target={[0, 0, 0]} />
             <axesHelper args={[2]} />
           </Canvas>
