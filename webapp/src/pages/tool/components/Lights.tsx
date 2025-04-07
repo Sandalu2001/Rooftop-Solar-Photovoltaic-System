@@ -25,11 +25,9 @@ const AnimatedLight = () => {
         ref={directionalLightRef}
         position={[3.3, 1.0, 4.4]} // Initial position (can be adjusted)
         castShadow={true}
-        intensity={1}
+        intensity={10}
       />
-      <ambientLight
-        intensity={0.3} // Ambient light to illuminate the scene
-      />
+      <ambientLight intensity={1} position={[0, 0, 0]} />
     </>
   );
 };

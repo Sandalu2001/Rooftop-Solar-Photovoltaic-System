@@ -169,29 +169,50 @@ export const calculateCentroid = (points: number[][]) => {
 
 //---------------------------------------------//
 
-export function getGradientColor(intensity: number, isShadowed: boolean) {
+export function getGradientColor(
+  directLightIntensity: number,
+  isShadowed: boolean
+) {
   const color = new THREE.Color();
 
-  if (isShadowed) {
-    // Radiant Blue for Shadowed Areas
+  console.log(
+    "DIRECT LIGHT INTENSITY",
+    directLightIntensity,
+    "SHADOWED",
+    isShadowed
+  );
+
+  if (isShadowed && directLightIntensity == 1) {
+    // Radiant Blue to Black for Shadowed Areas (shadowIntensity now 0 to 1, 1=full shadow)
     color.lerpColors(
-      new THREE.Color("#007bff"), // Radiant blue
-      new THREE.Color("black"), // Fade to black for deeper shadow (optional)
-      intensity // Intensity here represents shadow strength (0=full shadow, 1=no shadow in this context)
+      new THREE.Color("black"), // Radiant blue (base shadowed color)
+      new THREE.Color("blue"), // Fade to black for deeper shadow
+      1 // intensity is now just a boolean isShadowed, so always full shadow color if shadowed
     );
-  } else if (intensity < 0.5) {
-    // Red to Yellow for lower direct light
+  } else if (directLightIntensity == 0) {
+    // Adjusted range
+    // Red to Yellow for high direct light
     color.lerpColors(
       new THREE.Color("red"),
-      new THREE.Color("yellow"),
-      intensity * 2
+      new THREE.Color("red"),
+      directLightIntensity // Normalize intensity to 0-1 in this range
     );
-  } else {
-    // Yellow to Green for higher direct light
+  } else if (directLightIntensity < 0.5) {
+    // Adjusted range
+    // Red to Yellow for higher direct light
     color.lerpColors(
       new THREE.Color("yellow"),
+      new THREE.Color("yellow"),
+      directLightIntensity // Normalize intensity to 0-1 in this range
+    );
+  } else {
+    console.log(directLightIntensity);
+
+    // Yellow to Green for lower direct light
+    color.lerpColors(
       new THREE.Color("green"),
-      (intensity - 0.5) * 2
+      new THREE.Color("green"),
+      directLightIntensity // Normalize intensity to 0-1 in this range
     );
   }
   return color;
