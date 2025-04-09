@@ -35,13 +35,20 @@ import {
 import { useAppDispatch, useAppSelector } from "../../../slices/store";
 import { ClassTypes } from "../../../types/enums";
 import CustomIconButton from "../../../components/common/CustomIconButton";
-import { getPairs } from "../../../slices/solar-slice";
+import {
+  get3DModel,
+  get3DObjectJSON,
+  getPairs,
+} from "../../../slices/solar-slice";
+import { State } from "../../../types/common.type";
+import { LoadingButton } from "@mui/lab";
 
 const Tool = ({ setActiveStep }: StepperInterface) => {
   const [selectedClass, setSelectedClass] = useState<ClassTypes>(
     ClassTypes.BUILDING
   );
 
+  const modelState = useAppSelector((state) => state.solar.modelState);
   const image = useAppSelector((state) => state.solar.image);
   const cocoAnnotations = useAppSelector((state) => state.solar.cocoJSON);
   const [imageURL, setImageURL] = useState<string | null>(null);
@@ -56,7 +63,9 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [pairKey, setPairKey] = useState<string>("");
 
-  console.log("cocoAnnotations", annotations);
+  useEffect(() => {
+    modelState === State.SUCCESS ? setActiveStep(2) : console.log();
+  }, [modelState]);
 
   // Capture selecting an annotation
   useEffect(() => {
@@ -377,20 +386,22 @@ languages to more easily compare and strategize"
             </IconButton>
 
             <Stack flexDirection={"row"}>
-              <Button
+              <LoadingButton
+                loading={modelState === State.LOADING}
                 variant="contained"
                 color="primary"
                 size="large"
-                onClick={() =>
+                onClick={() => {
                   dispatch(
-                    getPairs(
-                      convertAnnotoriousToCOCO(
+                    get3DObjectJSON({
+                      image,
+                      cocoData: convertAnnotoriousToCOCO(
                         annotations as any,
                         cocoAnnotations.coco_output.images[0]
-                      )
-                    )
-                  )
-                }
+                      ),
+                    })
+                  );
+                }}
                 sx={{
                   display: "flex",
                   alignSelf: "end",
@@ -408,7 +419,7 @@ languages to more easily compare and strategize"
                 endIcon={<ArrowForwardIcon />}
               >
                 Get the insights
-              </Button>
+              </LoadingButton>
             </Stack>
           </Stack>
 
@@ -479,6 +490,8 @@ languages to more easily compare and strategize"
           <MoreVertIcon />
         </IconButton>
       </Stack>
+
+      {/* <ShadowSimulation /> */}
     </Stack>
   );
 };

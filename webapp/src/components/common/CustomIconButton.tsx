@@ -1,4 +1,5 @@
 import { alpha, IconButton } from "@mui/material";
+import { JSX } from "react";
 
 interface CustomIconButtonProps {
   color: "inherit" | "error" | "success" | "clicked";

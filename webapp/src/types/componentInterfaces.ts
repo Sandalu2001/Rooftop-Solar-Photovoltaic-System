@@ -1,5 +1,5 @@
 import { SelectChangeEvent } from "@mui/material";
-import { ReactNode } from "react";
+import { JSX, ReactNode } from "react";
 
 export interface TabPanelProps {
   children?: React.ReactNode;
@@ -127,6 +127,7 @@ export interface CocoDataInterface {
       area: number;
       iscrowd: number;
       score: number;
+      object_height?: number;
     }[];
     categories: {
       id: number;
@@ -136,32 +137,29 @@ export interface CocoDataInterface {
 }
 
 export interface AnnotoriousAnnotation {
-  annotation: {
-    id: string;
-    bodies: {
-      value: string;
-      purpose: string;
-      annotation?: string;
-    }[];
-    target: {
-      selector: {
-        type: string;
-        geometry: {
-          bounds: {
-            minX: number;
-            minY: number;
-            maxX: number;
-            maxY: number;
-          };
-          points: [number, number][];
+  id: string;
+  bodies: {
+    value: string;
+    purpose: string;
+    annotation?: string;
+  }[];
+  target: {
+    selector: {
+      type: string;
+      geometry: {
+        bounds: {
+          minX: number;
+          minY: number;
+          maxX: number;
+          maxY: number;
         };
+        points: [number, number][];
       };
-      creator?: {
-        isGuest: boolean;
-        id: string;
-      };
-      created?: string;
     };
+    creator?: {
+      isGuest: boolean;
+      id: string;
+    };
+    created?: string;
   };
-  editable?: boolean;
 }

@@ -31,6 +31,8 @@ import { getAnnotatedImage, setImageData } from "../../../slices/solar-slice";
 import { enqueueSnackbarMessage } from "../../../slices/commonSlice/common";
 import { State } from "../../../types/common.type";
 import { LoadingButton } from "@mui/lab";
+import GLBViewer from "./Visualizer";
+import Visualizer1 from "./Scene";
 
 const Upload = ({ setActiveStep }: StepperInterface) => {
   const [image, setImage] = useState<File | null>(null);
@@ -296,12 +298,12 @@ languages to more easily compare and strategize"
               onBlur={formik.handleBlur}
               type={"text"}
             />
-            <Grid item xs={4}>
+            <Grid size={4}>
               <Typography variant="h6" color={"GrayText"}>
                 {"Date"}
               </Typography>
             </Grid>
-            <Grid item xs={8}>
+            <Grid size={8}>
               <FormControl
                 fullWidth
                 size="small"
@@ -388,6 +390,9 @@ languages to more easily compare and strategize"
       >
         Get the insights
       </LoadingButton>
+
+      {/* <GLBViewer /> */}
+      {/* <Visualizer1 /> */}
 
       <Stack />
     </Stack>
