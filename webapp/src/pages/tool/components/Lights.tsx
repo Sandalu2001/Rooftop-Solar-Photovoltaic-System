@@ -9,7 +9,7 @@ const AnimatedLight = () => {
   useFrame(() => {
     if (directionalLightRef.current) {
       const time = clock.getElapsedTime();
-      const radius = 5; // Radius of the sun's orbit (adjust as needed)
+      const radius = 2; // Radius of the sun's orbit (adjust as needed)
       const speed = 0.2; // Speed of the sun's movement (adjust as needed)
       const height = 1; // Height of the sun's orbit (adjust as needed)
       directionalLightRef.current.position.x = Math.cos(time * speed) * radius;
