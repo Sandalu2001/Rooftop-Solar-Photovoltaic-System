@@ -294,17 +294,13 @@ const Object = ({
             castShadow
             receiveShadow
           >
-            <meshStandardMaterial vertexColors={true} side={THREE.DoubleSide} />
+            <meshStandardMaterial color={"lime"} side={THREE.DoubleSide} />
           </mesh>
         </>
       ) : (
         <>
           <mesh geometry={basedGeometry} castShadow receiveShadow>
-            <meshStandardMaterial
-              color={"yellow"}
-              vertexColors={true}
-              side={THREE.DoubleSide}
-            />
+            <meshStandardMaterial color={"yellow"} side={THREE.DoubleSide} />
           </mesh>
 
           <mesh
@@ -314,15 +310,6 @@ const Object = ({
             position={[0, 0, height / SCALE_FACTOR + 0.01]}
           >
             <meshStandardMaterial vertexColors={true} side={THREE.DoubleSide} />{" "}
-          </mesh>
-
-          <mesh
-            geometry={new THREE.BoxGeometry(0.2, 0.2, 0.2)}
-            castShadow
-            receiveShadow
-            position={[0.5, Math.random() * 2, Math.random() * 2]}
-          >
-            <meshStandardMaterial vertexColors={true} side={THREE.DoubleSide} />
           </mesh>
         </>
       )}
@@ -368,7 +355,7 @@ const Scene = ({
 
 const Visualizer1 = () => {
   const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
-  const [lightPositions, setLightPositions] = React.useState([20, 100, 60]);
+  const [lightPositions, setLightPositions] = React.useState([-20, 101, -35]);
 
   // Check if coco3DJSON and coco_output arTHREE.e defined before accessing annotations
   const annotations = coco3DJSON?.coco_output?.annotations;
@@ -390,7 +377,7 @@ const Visualizer1 = () => {
               name="directionalLight"
               position={new THREE.Vector3(...lightPositions)} // Initial position (can be adjusted)
               castShadow
-              intensity={1.2}
+              intensity={10}
             />
             <ambientLight intensity={0.7} position={[0, 0, 0]} />
             <Floor />
