@@ -1,14 +1,12 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import Lights from "./Lights";
 import * as THREE from "three";
 import { useAppSelector } from "../../../slices/store";
-import { Typography } from "@mui/material";
+import { Slider, Typography } from "@mui/material";
 import { calculateCentroid, getGradientColor } from "../../../utils/utils";
-import { current } from "@reduxjs/toolkit";
-import { ref } from "yup";
-
+var SunCalc = require("suncalc");
 // Green - Y
 // Blue - Z
 // Red - X
@@ -161,23 +159,16 @@ const Object = ({
 
   //-----------------------------------Shadow Simulation-----------------------//
 
-  const lightPosition = useRef<THREE.Vector3>(lightPositions); // Ref to get light position
   const meshRef = useRef<THREE.Group>(null); // Ref for the group mesh
   const { scene } = useThree(); // Access the scene for raycasting
+
+  console.log("Light Position ", lightPositions);
 
   useEffect(() => {
     if (!meshRef.current || !meshRef.current?.parent) {
       console.log("Mesh parent not found");
       return;
     }
-
-    // const directionalLight = scene.getObjectByName(
-    //   "directionalLight"
-    // ) as THREE.DirectionalLight;
-    // if (directionalLight) {
-    //   lightPosition.current.copy(directionalLight.position);
-    // }
-
     const raycaster = new THREE.Raycaster();
     const rayDirection = new THREE.Vector3();
 
@@ -199,10 +190,7 @@ const Object = ({
           i
         );
         mesh.localToWorld(vertex);
-
-        console.log(mesh.children);
-
-        rayDirection.subVectors(lightPosition.current, vertex).normalize();
+        rayDirection.subVectors(lightPositions, vertex).normalize();
         raycaster.set(vertex, rayDirection);
 
         const intersectTargets: THREE.Object3D[] = [];
@@ -217,7 +205,7 @@ const Object = ({
         const occluded =
           intersects.length > 0 &&
           intersects[0].object !== mesh &&
-          intersects[0].distance < vertex.distanceTo(lightPosition.current);
+          intersects[0].distance < vertex.distanceTo(lightPositions);
 
         let intensity = 1;
         let isShadowed = false;
@@ -252,13 +240,14 @@ const Object = ({
       geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
       geometry.attributes.color.needsUpdate = true;
     });
-  }, [lightPosition]);
+  }, [lightPositions]);
 
   return (
     <group
       ref={meshRef}
       rotation={[-Math.PI / 2, 0, 0]}
-      position={[-2, 0, 1.6]}
+      position={[-2.3, 0, -1.6]}
+      scale={[1, -1, 1]}
     >
       {categoryId === 3 ? (
         <>
@@ -317,11 +306,15 @@ const Object = ({
   );
 };
 
-function Floor() {
+function Floor({ imageUrl }: { imageUrl: string | null }) {
+  const texture = useLoader(THREE.TextureLoader, imageUrl || ""); // Load texture, handle potential null imageUrl
+  const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON); // Get coco3DJSON from Redux store
+  const imageData = coco3DJSON?.coco_output?.images[0]; // Get image data
+
   return (
     <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
-      <circleGeometry args={[50]} />
-      <meshStandardMaterial color="#fff" />
+      <planeGeometry args={[imageData.width / 500, imageData.height / 500]} />
+      <meshStandardMaterial map={texture} color="#fff" />
     </mesh>
   );
 }
@@ -355,13 +348,55 @@ const Scene = ({
 
 const Visualizer1 = () => {
   const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
-  const [lightPositions, setLightPositions] = React.useState([-20, 101, -35]);
+  const [lightPositions, setLightPositions] = React.useState([25, 100, 45]);
+  const image = useAppSelector((state) => state.solar.image);
+  const [imageURL, setImageURL] = useState<string | null>(null);
 
   // Check if coco3DJSON and coco_output arTHREE.e defined before accessing annotations
   const annotations = coco3DJSON?.coco_output?.annotations;
 
+  // Load image into the annotator
+  useEffect(() => {
+    if (image) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImageURL(e.target?.result as string);
+      };
+      reader.readAsDataURL(image);
+    } else {
+      setImageURL(null);
+    }
+  }, [image]);
+
+  const getSunPositionVector = (
+    date: Date,
+    latitude: number,
+    longitude: number,
+    radius = 100 // distance of the light source
+  ): [number, number, number] => {
+    const sunPos = SunCalc.getPosition(date, latitude, longitude);
+
+    const azimuth = sunPos.azimuth; // Radians from south (-π to π)
+    const altitude = sunPos.altitude; // Radians from horizon
+
+    // Convert spherical coordinates to cartesian for Three.js
+    const x = radius * Math.cos(altitude) * Math.sin(azimuth);
+    const y = radius * Math.sin(altitude);
+    const z = radius * Math.cos(altitude) * Math.cos(azimuth);
+
+    return [x, y, z];
+  };
+
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
+    <div
+      style={{
+        width: "100%",
+        height: "80vh",
+        background: "#0F6A58",
+        borderRadius: 30,
+        marginTop: 20,
+      }}
+    >
       {annotations ? (
         <Suspense fallback={<div>Loading...</div>}>
           <Canvas
@@ -380,7 +415,11 @@ const Visualizer1 = () => {
               intensity={10}
             />
             <ambientLight intensity={0.7} position={[0, 0, 0]} />
-            <Floor />
+            <Floor imageUrl={imageURL} />
+            {/* <Lights
+              lightPositions={lightPositions}
+              setLightPositions={setLightPositions}
+            /> */}
             <Scene
               annotations={annotations}
               lightPositions={new THREE.Vector3(...lightPositions)}
@@ -400,6 +439,26 @@ const Visualizer1 = () => {
           No image found. Please upload a 3D model.
         </Typography>
       )}
+      <Slider
+        aria-label="Small steps"
+        onChange={(event, value) => {
+          const hour = value as number;
+
+          const date = new Date();
+          date.setHours(hour, 0, 0);
+
+          const latitude = 6.938861;
+          const longitude = 79.854201;
+
+          const sunVec = getSunPositionVector(date, latitude, longitude);
+          setLightPositions(sunVec);
+        }}
+        step={1}
+        marks
+        min={0}
+        max={24}
+        valueLabelDisplay="auto"
+      />
     </div>
   );
 };
