@@ -44,6 +44,7 @@ export interface CustomFormFieldProps {
   type: React.HTMLInputTypeAttribute | undefined;
   startIcon?: JSX.Element;
   endIcon?: JSX.Element;
+  disabled?: boolean;
 }
 
 export interface CustomFormSelectFieldProps {
