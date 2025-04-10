@@ -1,11 +1,13 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
-import Lights from "./Lights";
+import { Canvas, useLoader, useThree } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useAppSelector } from "../../../slices/store";
-import { Slider, Typography } from "@mui/material";
+import { alpha, Grid, Slider, Stack, Typography } from "@mui/material";
 import { calculateCentroid, getGradientColor } from "../../../utils/utils";
+import FactCard from "../../../components/common/FactCard";
+import CustomFormField from "../../../components/common/CustomFormField";
+import dayjs from "dayjs";
 var SunCalc = require("suncalc");
 // Green - Y
 // Blue - Z
@@ -159,8 +161,8 @@ const Object = ({
 
   //-----------------------------------Shadow Simulation-----------------------//
 
-  const meshRef = useRef<THREE.Group>(null); // Ref for the group mesh
-  const { scene } = useThree(); // Access the scene for raycasting
+  const meshRef = useRef<THREE.Group>(null);
+  const { scene } = useThree();
 
   console.log("Light Position ", lightPositions);
 
@@ -307,9 +309,9 @@ const Object = ({
 };
 
 function Floor({ imageUrl }: { imageUrl: string | null }) {
-  const texture = useLoader(THREE.TextureLoader, imageUrl || ""); // Load texture, handle potential null imageUrl
-  const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON); // Get coco3DJSON from Redux store
-  const imageData = coco3DJSON?.coco_output?.images[0]; // Get image data
+  const texture = useLoader(THREE.TextureLoader, imageUrl || "");
+  const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
+  const imageData = coco3DJSON?.coco_output?.images[0];
 
   return (
     <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
@@ -390,75 +392,141 @@ const Visualizer1 = () => {
   return (
     <div
       style={{
-        width: "100%",
-        height: "80vh",
-        background: "#0F6A58",
-        borderRadius: 30,
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        height: "70vh",
         marginTop: 20,
       }}
     >
-      {annotations ? (
-        <Suspense fallback={<div>Loading...</div>}>
-          <Canvas
-            camera={{
-              position: [0, 4, 4], // Zoomed out a bit more
-              fov: 60,
-              near: 2,
-              far: 10000,
+      <div
+        style={{
+          height: "100%",
+          flex: 4,
+          background: "#0F6A58",
+          borderRadius: 30,
+        }}
+      >
+        {annotations ? (
+          <Suspense fallback={<div>Loading...</div>}>
+            <Canvas
+              camera={{
+                position: [0, 4, 4], // Zoomed out a bit more
+                fov: 60,
+                near: 2,
+                far: 10000,
+              }}
+              shadows
+            >
+              <directionalLight
+                name="directionalLight"
+                position={new THREE.Vector3(...lightPositions)}
+                castShadow
+                intensity={10}
+              />
+              <ambientLight intensity={0.7} position={[0, 0, 0]} />
+              <Floor imageUrl={imageURL} />
+
+              <Scene
+                annotations={annotations}
+                lightPositions={new THREE.Vector3(...lightPositions)}
+              />
+              <OrbitControls target={[0, 0, 0]} />
+              <axesHelper args={[2]} />
+            </Canvas>
+          </Suspense>
+        ) : (
+          <Typography
+            variant="h6"
+            style={{
+              color: "white",
+              padding: "2rem",
             }}
-            shadows
           >
-            <directionalLight
-              name="directionalLight"
-              position={new THREE.Vector3(...lightPositions)} // Initial position (can be adjusted)
-              castShadow
-              intensity={10}
-            />
-            <ambientLight intensity={0.7} position={[0, 0, 0]} />
-            <Floor imageUrl={imageURL} />
-            {/* <Lights
-              lightPositions={lightPositions}
-              setLightPositions={setLightPositions}
-            /> */}
-            <Scene
-              annotations={annotations}
-              lightPositions={new THREE.Vector3(...lightPositions)}
-            />
-            <OrbitControls target={[0, 0, 0]} />
-            <axesHelper args={[2]} />
-          </Canvas>
-        </Suspense>
-      ) : (
-        <Typography
-          variant="h6"
-          style={{
-            color: "white",
-            padding: "2rem",
+            No image found. Please upload a 3D model.
+          </Typography>
+        )}
+        <Slider
+          aria-label="Small steps"
+          onChange={(event, value) => {
+            const hour = value as number;
+
+            const date = new Date();
+            date.setHours(hour, 0, 0);
+
+            const latitude = 6.938861;
+            const longitude = 79.854201;
+
+            const sunVec = getSunPositionVector(date, latitude, longitude);
+            setLightPositions(sunVec);
+          }}
+          step={1}
+          marks
+          min={0}
+          max={24}
+          valueLabelDisplay="auto"
+        />
+      </div>
+
+      <div style={{ flex: 1, height: "100%" }}>
+        <Stack
+          flex={1}
+          sx={{
+            gap: 2,
+            maxWidth: 400,
+            p: 2,
+            borderRadius: 5,
+            background: (theme) => alpha(theme.palette.primary.main, 0.1),
+            height: "100%",
           }}
         >
-          No image found. Please upload a 3D model.
-        </Typography>
-      )}
-      <Slider
-        aria-label="Small steps"
-        onChange={(event, value) => {
-          const hour = value as number;
-
-          const date = new Date();
-          date.setHours(hour, 0, 0);
-
-          const latitude = 6.938861;
-          const longitude = 79.854201;
-
-          const sunVec = getSunPositionVector(date, latitude, longitude);
-          setLightPositions(sunVec);
-        }}
-        step={1}
-        marks
-        min={0}
-        max={24}
-        valueLabelDisplay="auto"
-      />
+          <Stack sx={{ gap: 1 }}>
+            <Typography
+              variant="h5"
+              color={"GrayText"}
+              sx={{ fontWeight: 600 }}
+            >
+              Basic Info
+            </Typography>
+            <Grid
+              container
+              spacing={2}
+              sx={{
+                background: (theme) => alpha(theme.palette.primary.main, 0.1),
+                p: 2,
+                borderRadius: 4,
+              }}
+            >
+              <CustomFormField
+                name={"latitude"}
+                label={"Latitude"}
+                onChange={() => {}}
+                value={343434.34}
+                type={"text"}
+                disabled
+              />
+              <CustomFormField
+                name={"longtitude"}
+                label={"Lontitude"}
+                onChange={() => {}}
+                value={343434.34}
+                type={"text"}
+                disabled
+              />
+              <CustomFormField
+                name={"Date"}
+                label={"Date"}
+                onChange={() => {}}
+                value={dayjs().format("YYYY-MM-DD")}
+                type={"text"}
+                disabled
+              />
+            </Grid>
+          </Stack>
+        </Stack>
+      </div>
     </div>
   );
 };
