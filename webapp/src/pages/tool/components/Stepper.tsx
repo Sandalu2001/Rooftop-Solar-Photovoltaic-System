@@ -7,11 +7,7 @@ import Visualizer1 from "./Scene";
 
 const StepperComponent = () => {
   const [activeStep, setActiveStep] = useState(0);
-  const steps = [
-    "Candidate Details",
-    "Employment Details",
-    "Organization Details",
-  ];
+  const steps = ["Upload Image ", "Annotate the Image", "Shadow Visualization"];
 
   const elementHandler = (step: number) => {
     switch (step) {
