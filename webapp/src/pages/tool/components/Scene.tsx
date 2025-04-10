@@ -8,6 +8,10 @@ import { calculateCentroid, getGradientColor } from "../../../utils/utils";
 import FactCard from "../../../components/common/FactCard";
 import CustomFormField from "../../../components/common/CustomFormField";
 import dayjs from "dayjs";
+import { current } from "@reduxjs/toolkit";
+import { count, log } from "console";
+import { normalize } from "path";
+import { object } from "yup";
 var SunCalc = require("suncalc");
 // Green - Y
 // Blue - Z
@@ -159,20 +163,85 @@ const Object = ({
     return geom;
   }, [shape]);
 
+  const rooftopAreaRef = useRef<number>(0); // Ref to store rooftop area
+  const shadowAreaRef = useRef<number>(0); // Ref to store shadow-missing area
+  const { scene } = useThree();
+
+  function getShapeArea(shape: THREE.Shape): number {
+    const points = shape.getPoints(); // Returns an array of Vector2
+
+    let area = 0;
+    const n = points.length;
+
+    for (let i = 0; i < n; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % n];
+
+      area += p1.x * p2.y - p2.x * p1.y;
+    }
+
+    return Math.abs(area / 2);
+  }
+
+  useEffect(() => {
+    if (topGeometry) {
+      // Use topGeometry here
+      let topFaceArea = 0;
+
+      // Iterate through faces of topGeometry (ShapeGeometry is triangles)
+      for (let i = 0; i < topGeometry.index!.count / 3; i++) {
+        const faceIndex = i;
+        const face = {
+          a: topGeometry.index!.getX(faceIndex * 3),
+          b: topGeometry.index!.getX(faceIndex * 3 + 1),
+          c: topGeometry.index!.getX(faceIndex * 3 + 2),
+        };
+
+        const vA = new THREE.Vector3().fromBufferAttribute(
+          topGeometry.attributes.position,
+          face.a
+        );
+        const vB = new THREE.Vector3().fromBufferAttribute(
+          topGeometry.attributes.position,
+          face.b
+        );
+        const vC = new THREE.Vector3().fromBufferAttribute(
+          topGeometry.attributes.position,
+          face.c
+        );
+
+        const faceArea = new THREE.Triangle(vA, vB, vC).getArea();
+        topFaceArea += faceArea;
+      }
+
+      rooftopAreaRef.current = topFaceArea * SCALE_FACTOR * SCALE_FACTOR; // Store in ref
+      console.log(
+        `Object ID: ${categoryId}, Total Rooftop Area:`,
+        rooftopAreaRef.current,
+        " square meters (approx"
+      ); // Log total area
+
+      const rooftopArea = getShapeArea(shape) * SCALE_FACTOR * SCALE_FACTOR;
+      console.log("Rooftop area:", rooftopArea, "square meters");
+    }
+  }, [topGeometry, categoryId]); // Recalculate when topGeometry or categoryId changes
+
   //-----------------------------------Shadow Simulation-----------------------//
 
   const meshRef = useRef<THREE.Group>(null);
-  const { scene } = useThree();
-
-  console.log("Light Position ", lightPositions);
+  const sunlitAreaRef = useRef<number>(0);
 
   useEffect(() => {
     if (!meshRef.current || !meshRef.current?.parent) {
       console.log("Mesh parent not found");
       return;
     }
+
     const raycaster = new THREE.Raycaster();
     const rayDirection = new THREE.Vector3();
+    let totalArea = 0; // Total area of the rooftop shape
+    let sunlitArea = 0; // Area exposed to the sun
+    let shadowedArea = 0; // Area covered by shadow
 
     // Iterate through all meshes inside meshRef
     meshRef.current.children.forEach((child) => {
@@ -182,7 +251,7 @@ const Object = ({
       const numVertices = positionAttribute.count;
 
       const shadowIntensities: number[] = [];
-      const isShadowedArray = [];
+      const isShadowedArray: boolean[] = [];
 
       geometry.computeVertexNormals();
 
@@ -191,8 +260,8 @@ const Object = ({
           positionAttribute,
           i
         );
-        mesh.localToWorld(vertex);
-        rayDirection.subVectors(lightPositions, vertex).normalize();
+        mesh.localToWorld(vertex); // Transform the vertex to world space
+        rayDirection.subVectors(lightPositions, vertex).normalize(); // Calculate ray direction from vertex to light source
         raycaster.set(vertex, rayDirection);
 
         const intersectTargets: THREE.Object3D[] = [];
@@ -226,7 +295,27 @@ const Object = ({
 
         shadowIntensities.push(intensity);
         isShadowedArray.push(isShadowed);
+
+        // Accumulate shadowed area based on intensity
+        if (isShadowed) {
+          shadowedArea += 1; // Shadowed vertex
+        } else {
+          sunlitArea += 1; // Sunlit vertex
+        }
       }
+
+      // Calculate the total area of the rooftop
+      totalArea = getShapeArea(shape);
+
+      // Now calculate the sunlit and shadowed areas based on shadowed and sunlit vertices
+      const sunlitPercentage = (sunlitArea / (sunlitArea + shadowedArea)) * 100;
+      const shadowedPercentage =
+        (shadowedArea / (sunlitArea + shadowedArea)) * 100;
+
+      // You can use `sunlitArea` and `shadowedArea` values as needed
+      sunlitAreaRef.current = sunlitPercentage;
+      console.log(`Sunlit Area: ${sunlitPercentage}%`);
+      console.log(`Shadowed Area: ${shadowedPercentage}%`);
 
       const colors = new Float32Array(numVertices * 3);
       for (let i = 0; i < numVertices; i++) {
@@ -404,7 +493,7 @@ const Visualizer1 = () => {
       <div
         style={{
           height: "100%",
-          flex: 4,
+          flex: 3,
           background: "#0F6A58",
           borderRadius: 30,
         }}
@@ -496,7 +585,7 @@ const Visualizer1 = () => {
         />
       </div>
 
-      <div style={{ flex: 1, height: "100%" }}>
+      <div style={{ flex: 2, height: "100%" }}>
         <Stack
           flex={1}
           sx={{
