@@ -422,16 +422,42 @@ const Visualizer1 = () => {
             >
               <directionalLight
                 name="directionalLight"
-                position={new THREE.Vector3(...lightPositions)}
+                position={
+                  new THREE.Vector3(
+                    lightPositions[0],
+                    lightPositions[1],
+                    lightPositions[2]
+                  )
+                }
                 castShadow
                 intensity={10}
               />
               <ambientLight intensity={0.7} position={[0, 0, 0]} />
+              <mesh
+                position={
+                  new THREE.Vector3(
+                    lightPositions[0],
+                    lightPositions[1],
+                    lightPositions[2]
+                  )
+                }
+                castShadow={false}
+                receiveShadow={false}
+              >
+                <sphereGeometry args={[1, 32, 32]} />
+                <meshBasicMaterial color="yellow" />
+              </mesh>
               <Floor imageUrl={imageURL} />
 
               <Scene
                 annotations={annotations}
-                lightPositions={new THREE.Vector3(...lightPositions)}
+                lightPositions={
+                  new THREE.Vector3(
+                    lightPositions[0],
+                    lightPositions[1],
+                    lightPositions[2]
+                  )
+                }
               />
               <OrbitControls target={[0, 0, 0]} />
               <axesHelper args={[2]} />
@@ -453,11 +479,11 @@ const Visualizer1 = () => {
           onChange={(event, value) => {
             const hour = value as number;
 
-            const date = new Date();
+            const date = new Date("2017-12-29");
             date.setHours(hour, 0, 0);
 
-            const latitude = 6.938861;
-            const longitude = 79.854201;
+            const latitude = 34.488386;
+            const longitude = 117.261711;
 
             const sunVec = getSunPositionVector(date, latitude, longitude);
             setLightPositions(sunVec);
