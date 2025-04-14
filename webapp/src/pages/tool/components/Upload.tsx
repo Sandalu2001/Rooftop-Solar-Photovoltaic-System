@@ -27,7 +27,11 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import UploadCompleteImage from "../../../assets/images/upload-complete.svg";
 import DownloadIcon from "@mui/icons-material/Download";
 import CancelIcon from "@mui/icons-material/Cancel";
-import { getAnnotatedImage, setImageData } from "../../../slices/solar-slice";
+import {
+  getAnnotatedImage,
+  setImageData,
+  setMetaData,
+} from "../../../slices/solar-slice";
 import { enqueueSnackbarMessage } from "../../../slices/commonSlice/common";
 import { State } from "../../../types/common.type";
 import { LoadingButton } from "@mui/lab";
@@ -84,6 +88,14 @@ const Upload = ({ setActiveStep }: StepperInterface) => {
     onSubmit(values) {
       const formData = new FormData();
       formData.append("file", image as Blob);
+
+      dispatch(
+        setMetaData({
+          latitude: values.latitude,
+          longitude: values.longtitude,
+          date: values.date ? new Date(values.date) : new Date(),
+        })
+      );
 
       image
         ? dispatch(getAnnotatedImage(image))

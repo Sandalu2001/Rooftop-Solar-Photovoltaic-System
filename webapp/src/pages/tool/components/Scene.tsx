@@ -1,14 +1,18 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
-import Lights from "./Lights";
+import { Canvas, useLoader, useThree } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useAppSelector } from "../../../slices/store";
-import { Typography } from "@mui/material";
+import { alpha, Grid, Slider, Stack, Typography } from "@mui/material";
 import { calculateCentroid, getGradientColor } from "../../../utils/utils";
+import FactCard from "../../../components/common/FactCard";
+import CustomFormField from "../../../components/common/CustomFormField";
+import dayjs from "dayjs";
 import { current } from "@reduxjs/toolkit";
-import { ref } from "yup";
-
+import { count, log } from "console";
+import { normalize } from "path";
+import { object } from "yup";
+var SunCalc = require("suncalc");
 // Green - Y
 // Blue - Z
 // Red - X
@@ -159,11 +163,73 @@ const Object = ({
     return geom;
   }, [shape]);
 
+  const rooftopAreaRef = useRef<number>(0); // Ref to store rooftop area
+  const shadowAreaRef = useRef<number>(0); // Ref to store shadow-missing area
+  const { scene } = useThree();
+
+  function getShapeArea(shape: THREE.Shape): number {
+    const points = shape.getPoints(); // Returns an array of Vector2
+
+    let area = 0;
+    const n = points.length;
+
+    for (let i = 0; i < n; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % n];
+
+      area += p1.x * p2.y - p2.x * p1.y;
+    }
+
+    return Math.abs(area / 2);
+  }
+
+  useEffect(() => {
+    if (topGeometry) {
+      // Use topGeometry here
+      let topFaceArea = 0;
+
+      // Iterate through faces of topGeometry (ShapeGeometry is triangles)
+      for (let i = 0; i < topGeometry.index!.count / 3; i++) {
+        const faceIndex = i;
+        const face = {
+          a: topGeometry.index!.getX(faceIndex * 3),
+          b: topGeometry.index!.getX(faceIndex * 3 + 1),
+          c: topGeometry.index!.getX(faceIndex * 3 + 2),
+        };
+
+        const vA = new THREE.Vector3().fromBufferAttribute(
+          topGeometry.attributes.position,
+          face.a
+        );
+        const vB = new THREE.Vector3().fromBufferAttribute(
+          topGeometry.attributes.position,
+          face.b
+        );
+        const vC = new THREE.Vector3().fromBufferAttribute(
+          topGeometry.attributes.position,
+          face.c
+        );
+
+        const faceArea = new THREE.Triangle(vA, vB, vC).getArea();
+        topFaceArea += faceArea;
+      }
+
+      rooftopAreaRef.current = topFaceArea * SCALE_FACTOR * SCALE_FACTOR; // Store in ref
+      console.log(
+        `Object ID: ${categoryId}, Total Rooftop Area:`,
+        rooftopAreaRef.current,
+        " square meters (approx"
+      ); // Log total area
+
+      const rooftopArea = getShapeArea(shape) * SCALE_FACTOR * SCALE_FACTOR;
+      console.log("Rooftop area:", rooftopArea, "square meters");
+    }
+  }, [topGeometry, categoryId]); // Recalculate when topGeometry or categoryId changes
+
   //-----------------------------------Shadow Simulation-----------------------//
 
-  const lightPosition = useRef<THREE.Vector3>(lightPositions); // Ref to get light position
-  const meshRef = useRef<THREE.Group>(null); // Ref for the group mesh
-  const { scene } = useThree(); // Access the scene for raycasting
+  const meshRef = useRef<THREE.Group>(null);
+  const sunlitAreaRef = useRef<number>(0);
 
   useEffect(() => {
     if (!meshRef.current || !meshRef.current?.parent) {
@@ -171,15 +237,11 @@ const Object = ({
       return;
     }
 
-    // const directionalLight = scene.getObjectByName(
-    //   "directionalLight"
-    // ) as THREE.DirectionalLight;
-    // if (directionalLight) {
-    //   lightPosition.current.copy(directionalLight.position);
-    // }
-
     const raycaster = new THREE.Raycaster();
     const rayDirection = new THREE.Vector3();
+    let totalArea = 0; // Total area of the rooftop shape
+    let sunlitArea = 0; // Area exposed to the sun
+    let shadowedArea = 0; // Area covered by shadow
 
     // Iterate through all meshes inside meshRef
     meshRef.current.children.forEach((child) => {
@@ -189,7 +251,7 @@ const Object = ({
       const numVertices = positionAttribute.count;
 
       const shadowIntensities: number[] = [];
-      const isShadowedArray = [];
+      const isShadowedArray: boolean[] = [];
 
       geometry.computeVertexNormals();
 
@@ -198,11 +260,8 @@ const Object = ({
           positionAttribute,
           i
         );
-        mesh.localToWorld(vertex);
-
-        console.log(mesh.children);
-
-        rayDirection.subVectors(lightPosition.current, vertex).normalize();
+        mesh.localToWorld(vertex); // Transform the vertex to world space
+        rayDirection.subVectors(lightPositions, vertex).normalize(); // Calculate ray direction from vertex to light source
         raycaster.set(vertex, rayDirection);
 
         const intersectTargets: THREE.Object3D[] = [];
@@ -217,7 +276,7 @@ const Object = ({
         const occluded =
           intersects.length > 0 &&
           intersects[0].object !== mesh &&
-          intersects[0].distance < vertex.distanceTo(lightPosition.current);
+          intersects[0].distance < vertex.distanceTo(lightPositions);
 
         let intensity = 1;
         let isShadowed = false;
@@ -236,7 +295,27 @@ const Object = ({
 
         shadowIntensities.push(intensity);
         isShadowedArray.push(isShadowed);
+
+        // Accumulate shadowed area based on intensity
+        if (isShadowed) {
+          shadowedArea += 1; // Shadowed vertex
+        } else {
+          sunlitArea += 1; // Sunlit vertex
+        }
       }
+
+      // Calculate the total area of the rooftop
+      totalArea = getShapeArea(shape);
+
+      // Now calculate the sunlit and shadowed areas based on shadowed and sunlit vertices
+      const sunlitPercentage = (sunlitArea / (sunlitArea + shadowedArea)) * 100;
+      const shadowedPercentage =
+        (shadowedArea / (sunlitArea + shadowedArea)) * 100;
+
+      // You can use `sunlitArea` and `shadowedArea` values as needed
+      sunlitAreaRef.current = sunlitPercentage;
+      console.log(`Sunlit Area: ${sunlitPercentage}%`);
+      console.log(`Shadowed Area: ${shadowedPercentage}%`);
 
       const colors = new Float32Array(numVertices * 3);
       for (let i = 0; i < numVertices; i++) {
@@ -252,13 +331,14 @@ const Object = ({
       geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
       geometry.attributes.color.needsUpdate = true;
     });
-  }, [lightPosition]);
+  }, [lightPositions]);
 
   return (
     <group
       ref={meshRef}
       rotation={[-Math.PI / 2, 0, 0]}
-      position={[-2, 0, 1.6]}
+      position={[-2.3, 0, -1.6]}
+      scale={[1, -1, 1]}
     >
       {categoryId === 3 ? (
         <>
@@ -317,11 +397,15 @@ const Object = ({
   );
 };
 
-function Floor() {
+function Floor({ imageUrl }: { imageUrl: string | null }) {
+  const texture = useLoader(THREE.TextureLoader, imageUrl || "");
+  const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
+  const imageData = coco3DJSON?.coco_output?.images[0];
+
   return (
     <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
-      <circleGeometry args={[50]} />
-      <meshStandardMaterial color="#fff" />
+      <planeGeometry args={[imageData.width / 500, imageData.height / 500]} />
+      <meshStandardMaterial map={texture} color="#fff" />
     </mesh>
   );
 }
@@ -355,51 +439,209 @@ const Scene = ({
 
 const Visualizer1 = () => {
   const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
-  const [lightPositions, setLightPositions] = React.useState([-20, 101, -35]);
+  const [lightPositions, setLightPositions] = React.useState([25, 100, 45]);
+  const image = useAppSelector((state) => state.solar.image);
+  const [imageURL, setImageURL] = useState<string | null>(null);
 
   // Check if coco3DJSON and coco_output arTHREE.e defined before accessing annotations
   const annotations = coco3DJSON?.coco_output?.annotations;
 
+  // Load image into the annotator
+  useEffect(() => {
+    if (image) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImageURL(e.target?.result as string);
+      };
+      reader.readAsDataURL(image);
+    } else {
+      setImageURL(null);
+    }
+  }, [image]);
+
+  const getSunPositionVector = (
+    date: Date,
+    latitude: number,
+    longitude: number,
+    radius = 100 // distance of the light source
+  ): [number, number, number] => {
+    const sunPos = SunCalc.getPosition(date, latitude, longitude);
+
+    const azimuth = sunPos.azimuth; // Radians from south (-π to π)
+    const altitude = sunPos.altitude; // Radians from horizon
+
+    // Convert spherical coordinates to cartesian for Three.js
+    const x = radius * Math.cos(altitude) * Math.sin(azimuth);
+    const y = radius * Math.sin(altitude);
+    const z = radius * Math.cos(altitude) * Math.cos(azimuth);
+
+    return [x, y, z];
+  };
+
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      {annotations ? (
-        <Suspense fallback={<div>Loading...</div>}>
-          <Canvas
-            camera={{
-              position: [0, 4, 4], // Zoomed out a bit more
-              fov: 60,
-              near: 2,
-              far: 10000,
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        height: "70vh",
+        marginTop: 20,
+      }}
+    >
+      <div
+        style={{
+          height: "100%",
+          flex: 3,
+          background: "#0F6A58",
+          borderRadius: 30,
+        }}
+      >
+        {annotations ? (
+          <Suspense fallback={<div>Loading...</div>}>
+            <Canvas
+              camera={{
+                position: [0, 4, 4], // Zoomed out a bit more
+                fov: 60,
+                near: 2,
+                far: 10000,
+              }}
+              shadows
+            >
+              <directionalLight
+                name="directionalLight"
+                position={
+                  new THREE.Vector3(
+                    lightPositions[0],
+                    lightPositions[1],
+                    lightPositions[2]
+                  )
+                }
+                castShadow
+                intensity={10}
+              />
+              <ambientLight intensity={0.7} position={[0, 0, 0]} />
+              <mesh
+                position={
+                  new THREE.Vector3(
+                    lightPositions[0],
+                    lightPositions[1],
+                    lightPositions[2]
+                  )
+                }
+                castShadow={false}
+                receiveShadow={false}
+              >
+                <sphereGeometry args={[1, 32, 32]} />
+                <meshBasicMaterial color="yellow" />
+              </mesh>
+              <Floor imageUrl={imageURL} />
+
+              <Scene
+                annotations={annotations}
+                lightPositions={
+                  new THREE.Vector3(
+                    lightPositions[0],
+                    lightPositions[1],
+                    lightPositions[2]
+                  )
+                }
+              />
+              <OrbitControls target={[0, 0, 0]} />
+              <axesHelper args={[2]} />
+            </Canvas>
+          </Suspense>
+        ) : (
+          <Typography
+            variant="h6"
+            style={{
+              color: "white",
+              padding: "2rem",
             }}
-            shadows
           >
-            <directionalLight
-              name="directionalLight"
-              position={new THREE.Vector3(...lightPositions)} // Initial position (can be adjusted)
-              castShadow
-              intensity={10}
-            />
-            <ambientLight intensity={0.7} position={[0, 0, 0]} />
-            <Floor />
-            <Scene
-              annotations={annotations}
-              lightPositions={new THREE.Vector3(...lightPositions)}
-            />
-            <OrbitControls target={[0, 0, 0]} />
-            <axesHelper args={[2]} />
-          </Canvas>
-        </Suspense>
-      ) : (
-        <Typography
-          variant="h6"
-          style={{
-            color: "white",
-            padding: "2rem",
+            No image found. Please upload a 3D model.
+          </Typography>
+        )}
+        <Slider
+          aria-label="Small steps"
+          onChange={(event, value) => {
+            const hour = value as number;
+
+            const date = new Date("2017-12-29");
+            date.setHours(hour, 0, 0);
+
+            const latitude = 34.488386;
+            const longitude = 117.261711;
+
+            const sunVec = getSunPositionVector(date, latitude, longitude);
+            setLightPositions(sunVec);
+          }}
+          step={1}
+          marks
+          min={0}
+          max={24}
+          valueLabelDisplay="auto"
+        />
+      </div>
+
+      <div style={{ flex: 2, height: "100%" }}>
+        <Stack
+          flex={1}
+          sx={{
+            gap: 2,
+            maxWidth: 400,
+            p: 2,
+            borderRadius: 5,
+            background: (theme) => alpha(theme.palette.primary.main, 0.1),
+            height: "100%",
           }}
         >
-          No image found. Please upload a 3D model.
-        </Typography>
-      )}
+          <Stack sx={{ gap: 1 }}>
+            <Typography
+              variant="h5"
+              color={"GrayText"}
+              sx={{ fontWeight: 600 }}
+            >
+              Basic Info
+            </Typography>
+            <Grid
+              container
+              spacing={2}
+              sx={{
+                background: (theme) => alpha(theme.palette.primary.main, 0.1),
+                p: 2,
+                borderRadius: 4,
+              }}
+            >
+              <CustomFormField
+                name={"latitude"}
+                label={"Latitude"}
+                onChange={() => {}}
+                value={343434.34}
+                type={"text"}
+                disabled
+              />
+              <CustomFormField
+                name={"longtitude"}
+                label={"Lontitude"}
+                onChange={() => {}}
+                value={343434.34}
+                type={"text"}
+                disabled
+              />
+              <CustomFormField
+                name={"Date"}
+                label={"Date"}
+                onChange={() => {}}
+                value={dayjs().format("YYYY-MM-DD")}
+                type={"text"}
+                disabled
+              />
+            </Grid>
+          </Stack>
+        </Stack>
+      </div>
     </div>
   );
 };

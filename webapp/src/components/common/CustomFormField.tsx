@@ -10,6 +10,7 @@ const CustomFormField = ({
   error,
   helperText,
   type,
+  disabled,
 }: CustomFormFieldProps) => {
   return (
     <>
@@ -29,6 +30,7 @@ const CustomFormField = ({
           onChange={onChange}
           onBlur={onBlur}
           error={error}
+          disabled={disabled}
           value={value}
           fullWidth
           sx={{
