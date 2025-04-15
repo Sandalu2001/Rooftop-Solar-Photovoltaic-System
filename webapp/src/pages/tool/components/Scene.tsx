@@ -5,10 +5,10 @@ import * as THREE from "three";
 import { useAppDispatch, useAppSelector } from "../../../slices/store";
 import { alpha, Grid, Slider, Stack, Typography } from "@mui/material";
 import { calculateCentroid, getGradientColor } from "../../../utils/utils";
-import CustomFormField from "../../../components/common/CustomFormField";
-import dayjs from "dayjs";
+
 import { updateBuildingArea } from "../../../slices/solar-slice";
 import DataTable from "./Table";
+import BasicInfo from "./BasicInfo";
 var SunCalc = require("suncalc");
 
 // Green - Y
@@ -465,7 +465,6 @@ const Visualizer1 = () => {
   const [lightPositions, setLightPositions] = React.useState([25, 100, 45]);
   const image = useAppSelector((state) => state.solar.image);
   const [imageURL, setImageURL] = useState<string | null>(null);
-  const metaData = useAppSelector((state) => state.solar);
   // Check if coco3DJSON and coco_output arTHREE.e defined before accessing annotations
   const annotations = coco3DJSON?.coco_output?.annotations;
 
@@ -505,11 +504,10 @@ const Visualizer1 = () => {
     <div
       style={{
         display: "flex",
-        height: "100%",
-        width: "100%",
         flexDirection: "column",
-        justifyContent: "center",
         alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
       }}
     >
       <div
@@ -526,7 +524,7 @@ const Visualizer1 = () => {
         <div
           style={{
             height: "100%",
-            flex: 3,
+            flex: 4,
             background: "#0F6A58",
             borderRadius: 30,
           }}
@@ -535,7 +533,7 @@ const Visualizer1 = () => {
             <Suspense fallback={<div>Loading...</div>}>
               <Canvas
                 camera={{
-                  position: [0, 4, 4], // Zoomed out a bit more
+                  position: [0, 4, 4],
                   fov: 60,
                   near: 2,
                   far: 10000,
@@ -601,7 +599,7 @@ const Visualizer1 = () => {
             onChange={(event, value) => {
               const hour = value as number;
 
-              const date = new Date("2017-12-29");
+              const date = new Date("2025-04-16");
               date.setHours(hour, 0, 0);
 
               const latitude = 34.488386;
@@ -617,64 +615,7 @@ const Visualizer1 = () => {
             valueLabelDisplay="auto"
           />
         </div>
-
-        <div style={{ flex: 2, height: "100%" }}>
-          <Stack
-            flex={1}
-            sx={{
-              gap: 2,
-              maxWidth: 400,
-              p: 2,
-              borderRadius: 5,
-              background: (theme) => alpha(theme.palette.primary.main, 0.1),
-              height: "100%",
-            }}
-          >
-            <Stack sx={{ gap: 1 }}>
-              <Typography
-                variant="h5"
-                color={"GrayText"}
-                sx={{ fontWeight: 600 }}
-              >
-                Basic Info
-              </Typography>
-              <Grid
-                container
-                spacing={2}
-                sx={{
-                  background: (theme) => alpha(theme.palette.primary.main, 0.1),
-                  p: 2,
-                  borderRadius: 4,
-                }}
-              >
-                <CustomFormField
-                  name={"latitude"}
-                  label={"Latitude"}
-                  onChange={() => {}}
-                  value={metaData.latitude}
-                  type={"text"}
-                  disabled
-                />
-                <CustomFormField
-                  name={"longtitude"}
-                  label={"Lontitude"}
-                  onChange={() => {}}
-                  value={metaData.longitude}
-                  type={"text"}
-                  disabled
-                />
-                <CustomFormField
-                  name={"Date"}
-                  label={"Date"}
-                  onChange={() => {}}
-                  value={dayjs(metaData.date).format("YYYY-MM-DD")}
-                  type={"text"}
-                  disabled
-                />
-              </Grid>
-            </Stack>
-          </Stack>
-        </div>
+        <BasicInfo />
       </div>
       <DataTable />
     </div>
