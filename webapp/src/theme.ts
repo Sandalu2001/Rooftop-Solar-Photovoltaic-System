@@ -1,6 +1,20 @@
 import { Theme, alpha, createTheme } from "@mui/material/styles";
 import { green } from "@mui/material/colors";
-import { borderRadius, lineHeight } from "@mui/system";
+import {
+  borderBottom,
+  borderLeft,
+  borderRadius,
+  borderRight,
+  color,
+  display,
+  fontSize,
+  fontWeight,
+  lineHeight,
+  margin,
+  minHeight,
+  padding,
+  width,
+} from "@mui/system";
 // import "./App.css";
 
 export const theme = createTheme({
@@ -57,6 +71,7 @@ export const theme = createTheme({
         },
       },
     },
+
     MuiDialog: {
       styleOverrides: {
         root: {
