@@ -1,8 +1,14 @@
-import React, { useRef } from "react";
+import React, { Dispatch, SetStateAction, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-const AnimatedLight = () => {
+const AnimatedLight = ({
+  lightPositions,
+  setLightPositions,
+}: {
+  lightPositions: number[];
+  setLightPositions: React.Dispatch<React.SetStateAction<number[]>>;
+}) => {
   const directionalLightRef = useRef<THREE.DirectionalLight>(null);
   const { clock } = useThree();
 
@@ -15,6 +21,7 @@ const AnimatedLight = () => {
       directionalLightRef.current.position.x = Math.cos(time * speed) * radius;
       directionalLightRef.current.position.z = Math.sin(time * speed) * radius;
       directionalLightRef.current.position.y = height; // Keep sun at a reasonable height, adjust for sun angle
+      setLightPositions(directionalLightRef.current.position.toArray());
     }
   });
 
@@ -23,7 +30,7 @@ const AnimatedLight = () => {
       <directionalLight
         name="directionalLight"
         ref={directionalLightRef}
-        position={[3.3, 1.0, 4.4]} // Initial position (can be adjusted)
+        position={new THREE.Vector3(...lightPositions)}
         castShadow={true}
         intensity={10}
       />
