@@ -143,7 +143,7 @@ const NavBar = () => {
                 </Avatar>
                 <Stack justifyContent={"center"}>
                   <Typography variant="body2" color={"GrayText"}>
-                    Cashier
+                    User
                   </Typography>
                   <Typography variant="body1" fontWeight={"600"}>
                     Sandalu De Silva
