@@ -94,8 +94,9 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
     setPairKey(e.target.value);
   };
 
-  // Function to update annotation with the new pairKey
+  // Update the selected building
   const updatePairKey = () => {
+    console.log(pairKey);
     if (anno && selectedId) {
       const annotation = annotations.find((a) => a.id === selectedId);
       if (annotation) {
@@ -305,32 +306,31 @@ languages to more easily compare and strategize"
               )}
             </ImageAnnotator>
 
-            <ImageAnnotationPopup
-              popup={(props) => (
-                <Stack
-                  spacing={2}
-                  sx={{
-                    background: (theme) => theme.palette.common.white,
-                    p: 2,
-                    borderRadius: 3,
-                    boxShadow: 2,
-                  }}
-                >
-                  <Typography>Category: {selectedCategory}</Typography>
-
-                  <TextField
-                    label="Pair Key"
-                    variant="outlined"
-                    size="small"
-                    value={pairKey}
-                    onChange={handlePairKeyChange}
-                  />
-                  <Button variant="contained" onClick={updatePairKey}>
-                    Update Pair Key
-                  </Button>
-                </Stack>
-              )}
-            />
+            {pairKey == "" && (
+              <ImageAnnotationPopup
+                popup={(props) => (
+                  <Stack
+                    spacing={2}
+                    sx={{
+                      background: (theme) => theme.palette.common.white,
+                      p: 2,
+                      borderRadius: 3,
+                      boxShadow: 2,
+                    }}
+                  >
+                    <Button
+                      variant="contained"
+                      onClick={() => {
+                        setPairKey("1");
+                        updatePairKey();
+                      }}
+                    >
+                      Select the building
+                    </Button>
+                  </Stack>
+                )}
+              />
+            )}
           </div>
 
           <Stack
