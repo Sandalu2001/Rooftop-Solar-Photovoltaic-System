@@ -128,7 +128,6 @@ export const convertCOCOToAnnotorious = (cocoData: CocoDataInterface) => {
 // -------------------------- COCO to Annotorious -------------------------- //
 
 export const uploadImageSchema = yup.object({
-  dataset: yup.string().required(REQUIRED),
   latitude: yup.number().required(REQUIRED).typeError(TYPERROR),
   longtitude: yup.number().required(REQUIRED).typeError(TYPERROR),
   date: yup.date().required(REQUIRED),
@@ -199,8 +198,6 @@ export function getGradientColor(
       directLightIntensity // Normalize intensity to 0-1 in this range
     );
   } else {
-    console.log(directLightIntensity);
-
     // Yellow to Green for lower direct light
     color.lerpColors(
       new THREE.Color("green"),
