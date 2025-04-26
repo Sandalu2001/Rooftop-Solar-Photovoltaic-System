@@ -49,6 +49,9 @@ export function convertAnnotoriousToCOCO(
       (cat) => cat.name.toLowerCase() === categoryName.toLowerCase()
     );
 
+    const isBuildingSelected =
+      annotoriousAnn.bodies[1]?.value.toString() || "false";
+
     return {
       id: index + 1, // Generate sequential ID
       image_id: imageMetadata.id,
@@ -57,7 +60,8 @@ export function convertAnnotoriousToCOCO(
       bbox: bbox,
       area: area,
       iscrowd: 0,
-      score: 1.0, // Default confidence score
+      score: 1.0,
+      selectedBuilding: isBuildingSelected,
     };
   });
 
