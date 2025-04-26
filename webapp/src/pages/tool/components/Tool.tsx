@@ -4,10 +4,8 @@ import {
   FormControl,
   IconButton,
   MenuItem,
-  Popover,
   Select,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
@@ -20,12 +18,7 @@ import {
 } from "@annotorious/react";
 import "@annotorious/react/annotorious-react.css";
 import FactCard from "../../../components/common/FactCard";
-import ControlPanel from "../../../components/common/ControlPanel";
-import {
-  AnnotoriousAnnotation,
-  StepperInterface,
-} from "../../../types/componentInterfaces";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { StepperInterface } from "../../../types/componentInterfaces";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import DeleteIcon from "@mui/icons-material/Delete";
 import {
@@ -34,12 +27,7 @@ import {
 } from "../../../utils/utils";
 import { useAppDispatch, useAppSelector } from "../../../slices/store";
 import { ClassTypes } from "../../../types/enums";
-import CustomIconButton from "../../../components/common/CustomIconButton";
-import {
-  get3DModel,
-  get3DObjectJSON,
-  getPairs,
-} from "../../../slices/solar-slice";
+import { get3DObjectJSON } from "../../../slices/solar-slice";
 import { State } from "../../../types/common.type";
 import { LoadingButton } from "@mui/lab";
 
@@ -48,6 +36,7 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
     ClassTypes.BUILDING
   );
 
+  const [chosenBuildingId, setChosenBuildingId] = useState<string | null>(null);
   const modelState = useAppSelector((state) => state.solar.modelState);
   const image = useAppSelector((state) => state.solar.image);
   const cocoAnnotations = useAppSelector((state) => state.solar.cocoJSON);
@@ -59,58 +48,208 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
   const { selected } = useSelection();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const isEffectRun = useRef(false);
-  const [convertedAnnotations, setConvertedAnnotations] = useState<any>();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [pairKey, setPairKey] = useState<string>("");
+  const [convertedAnnotations, setConvertedAnnotations] = useState<
+    ({
+      id: string;
+      bodies: {
+        purpose: string;
+        value: string;
+      }[];
+      target: {
+        selector: {
+          type: string;
+          geometry: {
+            bounds: {
+              minX: number;
+              minY: number;
+              maxX: number;
+              maxY: number;
+            };
+            points: [...any][];
+          };
+        };
+      };
+    } | null)[]
+  >();
 
   useEffect(() => {
     modelState === State.SUCCESS ? setActiveStep(2) : console.log();
   }, [modelState]);
 
+  // Add converted annotations to Annotorious & Find initial chosen building
+  useEffect(() => {
+    if (
+      !anno ||
+      isEffectRun.current ||
+      !convertedAnnotations ||
+      convertedAnnotations.length === 0
+    )
+      return;
+
+    if (
+      anno.getAnnotations().length > 0 &&
+      anno.getAnnotations().length >= convertedAnnotations.length
+    ) {
+      console.log("Annotations appear to be loaded already.");
+      // Find initial chosen building even if already loaded
+      const initiallyChosen = convertedAnnotations.find((a) =>
+        a?.bodies?.some(
+          (b: any) => b.purpose === "selectedBuilding" && b.value === true
+        )
+      );
+      if (initiallyChosen && !chosenBuildingId) {
+        console.log(
+          "Found initially chosen building on load:",
+          initiallyChosen.id
+        );
+        setChosenBuildingId(initiallyChosen.id);
+      }
+      isEffectRun.current = true; // Mark as run
+      return;
+    }
+
+    // Mark as run *before* adding potentially async operations
+    isEffectRun.current = true;
+    let foundChosenId: string | null = null;
+
+    convertedAnnotations.forEach((annotation: any) => {
+      if (annotation !== null) {
+        try {
+          // Check if annotation already exists before adding
+          if (!anno.getAnnotationById(annotation.id)) {
+            anno.addAnnotation(annotation);
+          } else {
+            console.log(`Annotation ${annotation.id} already exists.`);
+          }
+
+          // Check if this annotation is marked as the chosen one
+          if (
+            annotation.bodies?.some(
+              (b: any) => b.purpose === "selectedBuilding" && b.value === true
+            )
+          ) {
+            foundChosenId = annotation.id;
+            console.log(
+              "Found initially chosen building during load:",
+              foundChosenId
+            );
+          }
+        } catch (error) {
+          console.error(
+            "Error adding/checking annotation:",
+            annotation.id,
+            error
+          );
+        }
+      }
+    });
+
+    // Set the initial chosen ID after iterating through all loaded annotations
+    if (foundChosenId && !chosenBuildingId) {
+      setChosenBuildingId(foundChosenId);
+    }
+  }, [anno, convertedAnnotations, chosenBuildingId]);
+
   // Capture selecting an annotation
   useEffect(() => {
-    if (selected.length > 0) {
-      const selectedAnnotation = selected[0].annotation;
-      setSelectedId(selectedAnnotation.id);
+    if (!anno) return;
 
-      // Extract the category from the annotation bodies
-      const categoryBody = selectedAnnotation.bodies.find(
-        (body: any) => body.purpose === "tagging"
+    if (selected.length === 1) {
+      const newlySelectedAnnotation = selected[0].annotation;
+      const newlySelectedId = newlySelectedAnnotation.id;
+      setSelectedId(newlySelectedId);
+
+      const isBuilding = newlySelectedAnnotation.bodies.some(
+        (body) =>
+          body.purpose === "tagging" && body.value === ClassTypes.BUILDING
       );
-      setSelectedCategory(categoryBody?.value ?? null);
-      // Check if there is a pairKey stored in the annotation
-      const pairKeyBody = selectedAnnotation.bodies.find(
-        (body: any) => body.purpose === "pairKey"
-      );
-      setPairKey(pairKeyBody?.value ?? "");
-    } else {
-      setSelectedId(null);
-      setSelectedCategory(null);
-      setPairKey("");
-    }
-  }, [selected]);
 
-  const handlePairKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPairKey(e.target.value);
-  };
+      // --- Logic to update the *chosen* building ---
+      if (isBuilding && newlySelectedId !== chosenBuildingId) {
+        console.log(
+          `Building ${newlySelectedId} selected. Updating chosen building.`
+        );
 
-  // Update the selected building
-  const updatePairKey = () => {
-    console.log(pairKey);
-    if (anno && selectedId) {
-      const annotation = annotations.find((a) => a.id === selectedId);
-      if (annotation) {
-        const updatedAnnotation = {
-          ...annotation,
-          bodies: [
-            ...annotation.bodies.filter((b) => b.purpose !== "pairKey"), // Remove old pairKey
-            { purpose: "pairKey", value: pairKey }, // Add new pairKey
-          ],
-        };
-        anno.updateAnnotation(updatedAnnotation);
+        //  Deselect the previously chosen building if it exists
+        if (chosenBuildingId) {
+          const previouslyChosen = annotations.find(
+            (a) => a.id === chosenBuildingId
+          );
+          if (previouslyChosen) {
+            // Create updated annotation *without* the selectedBuilding marker
+            const updatedPrevious = {
+              ...previouslyChosen,
+              bodies: previouslyChosen.bodies.filter(
+                (b) => b.purpose !== "selectedBuilding"
+              ),
+            };
+            // Only update if bodies actually changed
+            if (
+              updatedPrevious.bodies.length !== previouslyChosen.bodies.length
+            ) {
+              console.log("Deselecting previous building:", chosenBuildingId);
+              anno.updateAnnotation(updatedPrevious);
+            }
+          } else {
+            console.warn(
+              "Could not find previously chosen building annotation:",
+              chosenBuildingId
+            );
+          }
+        }
+
+        //  Select the new building
+        const newlyChosen = annotations.find((a) => a.id === newlySelectedId);
+        if (newlyChosen) {
+          // Create updated annotation *with* the selectedBuilding marker
+          const updatedNew = {
+            ...newlyChosen,
+            // Add the marker, ensuring no duplicates of the marker itself
+            bodies: [
+              ...newlyChosen.bodies.filter(
+                (b) => b.purpose !== "selectedBuilding"
+              ), // Remove old marker just in case
+              { purpose: "selectedBuilding", value: true }, // Add the new marker
+            ],
+          };
+          console.log("Selecting new building:", newlySelectedId);
+          anno.updateAnnotation(updatedNew);
+          setChosenBuildingId(newlySelectedId); // Update the state
+        } else {
+          console.error(
+            "Could not find newly selected building annotation:",
+            newlySelectedId
+          );
+        }
+      } else if (isBuilding && newlySelectedId === chosenBuildingId) {
+        console.log(`Building ${newlySelectedId} is already the chosen one.`);
+        // Optional: Allow deselecting by clicking the same building again?
+        // If so, add logic here to remove the marker and setChosenBuildingId(null)
+      } else if (!isBuilding) {
+        console.log(
+          `Annotation ${newlySelectedId} selected, but it's not a building. Ignoring for chosen building logic.`
+        );
+        // Keep track of general selection highlight info if needed
+        const categoryBody = newlySelectedAnnotation.bodies.find(
+          (body: any) => body.purpose === "tagging"
+        );
       }
+      // --- End of chosen building logic ---
+    } else if (selected.length === 0) {
+      // User clicked away, deselecting everything
+      setSelectedId(null);
+      console.log("Selection cleared.");
+    } else {
+      // Multiple annotations selected - ignore for single building selection logic
+      console.log(
+        "Multiple annotations selected. Ignoring for chosen building logic."
+      );
+      setSelectedId(null); // Clear single selection ID
     }
-  };
+
+    console.log(annotations);
+  }, [selected, anno, chosenBuildingId]); // Add anno and chosenBuildingId dependencies
+  //------------------------------------------------------------------ //
 
   // Convert COCO annotations to Annotorious format
   useEffect(() => {
@@ -183,16 +322,36 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
             break;
         }
 
-        const opacity = state?.selected ? 0.9 : 0.5;
+        // Determine opacity and stroke based on state
+        let fillOpacity = 0.5;
+        let strokeWidth = 1;
+        let strokeColor = color;
+
+        // Check if it's the specifically CHOSEN building
+        const isChosen = annotation.id === chosenBuildingId;
+
+        if (isChosen) {
+          fillOpacity = 0.7;
+          strokeWidth = 4;
+          strokeColor = "#FFFF00";
+          color = "#FED13D";
+        } else if (state?.selected) {
+          fillOpacity = 0.8;
+          strokeWidth = 2;
+        } else if (state?.hovered) {
+          fillOpacity = 0.65;
+          strokeWidth = 2;
+        }
 
         return {
           fill: color,
-          fillOpacity: opacity,
-          stroke: color,
+          fillOpacity: fillOpacity,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
         };
       });
     }
-  }, [annotations.length]);
+  }, [annotations.length, chosenBuildingId, anno]);
   //------------------------------------------------------------------ //
 
   //----------------- Capture selecting an annotation ----------------- //
@@ -247,20 +406,19 @@ const Tool = ({ setActiveStep }: StepperInterface) => {
         }}
       >
         <FactCard
-          description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
+          description="Review Annotations – Check the automatically detected shadow regions for accuracy."
           color="inherit"
         />
         <FactCard
-          description="Get standardized views of data and insight across borders and
-languages to more easily compare and strategize"
+          description="Make Adjustments – Modify, add, or remove annotations using the editing tools."
           color="inherit"
         />
         <FactCard
-          description="Talk to our experts and read their research and analysis reports"
+          description="Select the building that you needed to be estminated the photovoltaic energy"
           color="primary"
         />
         <FactCard
-          description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
+          description="Make sure you select the right location , because the results depends on your input"
           color="inherit"
         />
       </Stack>
@@ -306,26 +464,33 @@ languages to more easily compare and strategize"
               )}
             </ImageAnnotator>
 
-            {pairKey == "" && (
+            {chosenBuildingId == selectedId && (
               <ImageAnnotationPopup
                 popup={(props) => (
                   <Stack
-                    spacing={2}
+                    spacing={1} // Reduced spacing
                     sx={{
-                      background: (theme) => theme.palette.common.white,
-                      p: 2,
-                      borderRadius: 3,
-                      boxShadow: 2,
+                      background: (theme) =>
+                        alpha(theme.palette.background.paper, 0.95), // Slightly transparent bg
+                      p: 1.5, // Smaller padding
+                      borderRadius: 2,
+                      boxShadow: 3, // More prominent shadow
+                      border: (theme) =>
+                        `1px solid ${theme.palette.primary.main}`, // Primary color border
                     }}
                   >
+                    <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                      Choose this building?
+                    </Typography>
                     <Button
                       variant="contained"
-                      onClick={() => {
-                        setPairKey("1");
-                        updatePairKey();
+                      size="small"
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
                       }}
                     >
-                      Select the building
+                      Confirm
                     </Button>
                   </Stack>
                 )}
@@ -422,76 +587,8 @@ languages to more easily compare and strategize"
               </LoadingButton>
             </Stack>
           </Stack>
-
-          {/* <Typography>Selected Annotation </Typography>
-          <pre>{JSON.stringify(selected, null, 2)}</pre> */}
         </Stack>
-
-        <Popover
-          id="mouse-over-popover"
-          sx={{ pointerEvents: "none" }}
-          open={open}
-          anchorEl={anchorEl}
-          anchorOrigin={{
-            vertical: "bottom",
-            horizontal: "left",
-          }}
-          transformOrigin={{
-            vertical: "top",
-            horizontal: "left",
-          }}
-          onClose={handlePopoverClose}
-        >
-          <Stack
-            flex={1}
-            sx={{
-              gap: 2,
-              maxWidth: 400,
-              p: 2,
-              borderRadius: 5,
-            }}
-          >
-            <FactCard
-              description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
-              color="inherit"
-            />
-            <FactCard
-              description="Get standardized views of data and insight across borders and
-languages to more easily compare and strategize"
-              color="inherit"
-            />
-            <FactCard
-              description="Talk to our experts and read their research and analysis reports"
-              color="primary"
-            />
-            <FactCard
-              description="Understand the costs and advantages of switching to renewable energy, Uncover what your peers are doing in the region"
-              color="inherit"
-            />
-          </Stack>
-        </Popover>
-
-        <IconButton
-          size="large"
-          color="inherit"
-          sx={{
-            position: "absolute",
-            top: 20,
-            left: 20,
-            color: "white",
-            background: (theme) => alpha(theme.palette.common.black, 0.8),
-            "&:hover": {
-              background: (theme) => alpha(theme.palette.common.black, 0.05),
-            },
-          }}
-          onMouseEnter={handlePopoverOpen}
-          onMouseLeave={handlePopoverClose}
-        >
-          <MoreVertIcon />
-        </IconButton>
       </Stack>
-
-      {/* <ShadowSimulation /> */}
     </Stack>
   );
 };
