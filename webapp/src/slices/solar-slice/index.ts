@@ -15,10 +15,6 @@ interface BuildingArea {
   sunLitPrecentage: number;
 }
 
-interface BuildingAreaState {
-  buildingAreas: BuildingArea[];
-}
-
 interface SolarSliceInterface {
   predictionState: State;
   addNewProductState: State;
@@ -32,6 +28,7 @@ interface SolarSliceInterface {
   longitude: number;
   date: Date;
   buildingAreas: BuildingArea[];
+  seletectedBuildingArea: BuildingArea | null;
 }
 
 const initialState: SolarSliceInterface = {
@@ -47,6 +44,7 @@ const initialState: SolarSliceInterface = {
   longitude: 0,
   date: new Date(),
   buildingAreas: [],
+  seletectedBuildingArea: null,
 };
 
 const SolarSlice = createSlice({
@@ -87,6 +85,20 @@ const SolarSlice = createSlice({
     },
     clearBuildingAreas: (state) => {
       state.buildingAreas = [];
+    },
+    setSelectedBuildingArea: (state, action: PayloadAction<BuildingArea>) => {
+      const { objectId, totalRooftopArea, sunLitPrecentage } = action.payload;
+      const existingBuildingAreaIndex = state.buildingAreas.findIndex(
+        (area) => area.objectId === objectId
+      );
+
+      if (existingBuildingAreaIndex !== -1) {
+        state.seletectedBuildingArea = {
+          objectId,
+          totalRooftopArea,
+          sunLitPrecentage,
+        };
+      }
     },
   },
 
@@ -336,5 +348,6 @@ export const {
   setMetaData,
   updateBuildingArea,
   clearBuildingAreas,
+  setSelectedBuildingArea,
 } = SolarSlice.actions;
 export default SolarSlice.reducer;
