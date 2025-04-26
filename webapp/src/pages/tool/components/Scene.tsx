@@ -6,7 +6,10 @@ import { useAppDispatch, useAppSelector } from "../../../slices/store";
 import { alpha, Grid, Slider, Stack, Typography } from "@mui/material";
 import { calculateCentroid, getGradientColor } from "../../../utils/utils";
 
-import { updateBuildingArea } from "../../../slices/solar-slice";
+import {
+  updateBuildingArea,
+  setSelectedBuildingArea,
+} from "../../../slices/solar-slice";
 import DataTable from "./Table";
 import BasicInfo from "./BasicInfo";
 var SunCalc = require("suncalc");
@@ -28,6 +31,7 @@ const Object = ({
   debug = true,
   lightPositions,
   objectId,
+  isSelected,
 }: {
   segmentation: number[][];
   height: number;
@@ -39,6 +43,7 @@ const Object = ({
   debug?: boolean;
   lightPositions: THREE.Vector3;
   objectId: number;
+  isSelected: String;
 }) => {
   const dispatch = useAppDispatch();
 
@@ -58,8 +63,23 @@ const Object = ({
         segPoints[i + 1] / SCALE_FACTOR,
       ]);
     }
+
+    // Ensure shape is closed
+    if (
+      points.length > 1 &&
+      (points[0][0] !== points[points.length - 1][0] ||
+        points[0][1] !== points[points.length - 1][1])
+    ) {
+      points.push([...points[0]]);
+    }
+    if (points.length < 3) {
+      console.warn(
+        `Insufficient points in segmentation for object ${objectId}`
+      );
+      return [];
+    }
     return points;
-  }, [segmentation]);
+  }, [segmentation, objectId]);
 
   const shape = useMemo(() => {
     const wireframeShape = new THREE.Shape();
@@ -133,13 +153,7 @@ const Object = ({
   //--------------------------------------//
 
   //---------------Tree Canopy (Cone)---------------//
-  const canopyRadius =
-    Math.max(polygonWidth, polygonDepth) * treeCanopyRadiusFactor;
   const canopyHeight = (height * treeCanopyHeightFactor) / SCALE_FACTOR;
-  const canopyGeometry = useMemo(
-    () => new THREE.ConeGeometry(canopyRadius, canopyHeight, 32),
-    [canopyRadius, canopyHeight]
-  );
 
   const canopyExtrudeSettings = {
     depth: canopyHeight,
@@ -165,8 +179,7 @@ const Object = ({
     return geom;
   }, [shape]);
 
-  const rooftopAreaRef = useRef<number>(0); // Ref to store rooftop area
-  const shadowAreaRef = useRef<number>(0); // Ref to store shadow-missing area
+  const rooftopAreaRef = useRef<number>(0);
   const { scene } = useThree();
 
   function getShapeArea(shape: THREE.Shape): number {
@@ -320,10 +333,6 @@ const Object = ({
 
       // Now calculate the sunlit and shadowed areas based on shadowed and sunlit vertices
       const sunlitPercentage = (sunlitArea / (sunlitArea + shadowedArea)) * 100;
-      const shadowedPercentage =
-        (shadowedArea / (sunlitArea + shadowedArea)) * 100;
-
-      // You can use `sunlitArea` and `shadowedArea` values as needed
       sunlitAreaRef.current = sunlitPercentage;
 
       dispatch(
@@ -333,11 +342,16 @@ const Object = ({
           sunLitPrecentage: sunlitAreaRef.current,
         })
       );
-      console.log(
-        `Object ID: ${objectId}, Sunlit Rooftop Area:`,
-        sunlitAreaRef.current,
-        " square meters (approx)"
-      );
+
+      if (isSelected == "true") {
+        dispatch(
+          setSelectedBuildingArea({
+            objectId: objectId,
+            totalRooftopArea: rooftopAreaRef.current,
+            sunLitPrecentage: sunlitAreaRef.current,
+          })
+        );
+      }
 
       const colors = new Float32Array(numVertices * 3);
       for (let i = 0; i < numVertices; i++) {
@@ -402,7 +416,10 @@ const Object = ({
       ) : (
         <>
           <mesh geometry={basedGeometry} castShadow receiveShadow>
-            <meshStandardMaterial color={"yellow"} side={THREE.DoubleSide} />
+            <meshStandardMaterial
+              color={isSelected == "false" ? "yellow" : "purple"}
+              side={THREE.DoubleSide}
+            />
           </mesh>
 
           <mesh
@@ -424,10 +441,20 @@ function Floor({ imageUrl }: { imageUrl: string | null }) {
   const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
   const imageData = coco3DJSON?.coco_output?.images[0];
 
+  // Default dimensions if imageData is not available
+  const planeWidth = imageData ? imageData.width / SCALE_FACTOR : 10;
+  const planeHeight = imageData ? imageData.height / SCALE_FACTOR : 10;
+
   return (
-    <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
-      <planeGeometry args={[imageData.width / 500, imageData.height / 500]} />
-      <meshStandardMaterial map={texture} color="#fff" />
+    <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, 0]} receiveShadow>
+      {" "}
+      {/* Lowered slightly */}
+      <planeGeometry args={[planeWidth, planeHeight]} />
+      <meshStandardMaterial
+        map={texture}
+        color="#ffffff"
+        side={THREE.DoubleSide}
+      />
     </mesh>
   );
 }
@@ -451,6 +478,7 @@ const Scene = ({
               categoryId={item.category_id}
               lightPositions={lightPositions}
               objectId={item.id}
+              isSelected={item.selectedBuilding}
             />
           );
         }
@@ -507,6 +535,7 @@ const Visualizer1 = () => {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        justifyItems: "center",
         gap: 10,
       }}
     >
@@ -517,6 +546,7 @@ const Visualizer1 = () => {
           alignItems: "center",
           justifyContent: "center",
           gap: 10,
+          width: "100%",
           height: "70vh",
           marginTop: 20,
         }}
@@ -525,8 +555,9 @@ const Visualizer1 = () => {
           style={{
             height: "100%",
             flex: 4,
-            background: "#0F6A58",
-            borderRadius: 30,
+            borderRadius: 15,
+            border: "1px solid #ccc",
+            background: "#8ACCD5",
           }}
         >
           {annotations ? (
@@ -556,15 +587,15 @@ const Visualizer1 = () => {
                 <mesh
                   position={
                     new THREE.Vector3(
-                      lightPositions[0],
-                      lightPositions[1],
-                      lightPositions[2]
+                      lightPositions[0] / 25,
+                      lightPositions[1] / 25,
+                      lightPositions[2] / 25
                     )
                   }
                   castShadow={false}
                   receiveShadow={false}
                 >
-                  <sphereGeometry args={[1, 32, 32]} />
+                  <sphereGeometry args={[0.2, 32, 32]} />
                   <meshBasicMaterial color="yellow" />
                 </mesh>
                 <Floor imageUrl={imageURL} />
@@ -602,14 +633,20 @@ const Visualizer1 = () => {
               const date = new Date("2025-04-16");
               date.setHours(hour, 0, 0);
 
-              const latitude = 34.488386;
-              const longitude = 117.261711;
+              const latitude = 7.8731;
+              const longitude = 80.7718;
 
               const sunVec = getSunPositionVector(date, latitude, longitude);
               setLightPositions(sunVec);
             }}
             step={1}
-            marks
+            marks={[
+              { value: 0, label: "0h" },
+              { value: 6, label: "6h" },
+              { value: 12, label: "12h" },
+              { value: 18, label: "18h" },
+              { value: 24, label: "24h" },
+            ]}
             min={0}
             max={24}
             valueLabelDisplay="auto"
