@@ -6,6 +6,9 @@ import { useAppSelector } from "../../../slices/store";
 
 const BasicInfo = () => {
   const metadata = useAppSelector((state) => state.solar);
+  const selectedBuildingData = useAppSelector(
+    (state) => state.solar.seletectedBuildingArea
+  );
   return (
     <div style={{ flex: 2, height: "100%" }}>
       <Stack
@@ -73,18 +76,26 @@ const BasicInfo = () => {
             }}
           >
             <CustomFormField
-              name={"latitude"}
-              label={"Latitude"}
+              name={"sunlitPercentage"}
+              label={"SunLit Percentage"}
               onChange={() => {}}
-              value={metadata.latitude}
+              value={
+                selectedBuildingData?.sunLitPrecentage
+                  ? selectedBuildingData?.sunLitPrecentage + " %"
+                  : "0 %"
+              }
               type={"text"}
               disabled
             />
             <CustomFormField
-              name={"longtitude"}
-              label={"Lontitude"}
+              name={"totalArea"}
+              label={"Total Area"}
               onChange={() => {}}
-              value={metadata.longitude}
+              value={
+                selectedBuildingData?.totalRooftopArea
+                  ? selectedBuildingData?.totalRooftopArea + " m²"
+                  : "0 m²"
+              }
               type={"text"}
               disabled
             />
