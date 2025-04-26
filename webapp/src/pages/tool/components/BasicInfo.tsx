@@ -58,6 +58,46 @@ const BasicInfo = () => {
             />
           </Grid>
         </Stack>
+
+        <Stack sx={{ gap: 1 }}>
+          <Typography variant="h5" color={"GrayText"} sx={{ fontWeight: 600 }}>
+            Model estimation
+          </Typography>
+          <Grid
+            container
+            spacing={2}
+            sx={{
+              background: (theme) => alpha(theme.palette.primary.main, 0.1),
+              p: 2,
+              borderRadius: 4,
+            }}
+          >
+            <CustomFormField
+              name={"latitude"}
+              label={"Latitude"}
+              onChange={() => {}}
+              value={metadata.latitude}
+              type={"text"}
+              disabled
+            />
+            <CustomFormField
+              name={"longtitude"}
+              label={"Lontitude"}
+              onChange={() => {}}
+              value={metadata.longitude}
+              type={"text"}
+              disabled
+            />
+            <CustomFormField
+              name={"Date"}
+              label={"Date"}
+              onChange={() => {}}
+              value={dayjs(metadata.date).format("YYYY-MM-DD")}
+              type={"text"}
+              disabled
+            />
+          </Grid>
+        </Stack>
       </Stack>
     </div>
   );
