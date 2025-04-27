@@ -4,14 +4,11 @@ from werkzeug.utils import secure_filename
 from model.detectron_model import DetectronModel
 from model.centroid_model import BuildingShadowMatcher
 from model.data_type_conversion_model import DataTypeConversionModel
-import ee
 
 image_controller = Blueprint("image_controller", __name__)
 model = DetectronModel()
 matcher = BuildingShadowMatcher()
 converter = DataTypeConversionModel()
-
-ee.Initialize(project='ee-final-year-project-2001')
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
