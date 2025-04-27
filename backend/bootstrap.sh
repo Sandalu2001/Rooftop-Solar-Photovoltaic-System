@@ -7,7 +7,7 @@ echo "Setting up Flask App using Conda environment (gee)..."
 
 # Activate the existing Conda environment
 source /opt/anaconda3/etc/profile.d/conda.sh  # Ensure Conda is available in shell
-conda activate gee
+conda activate fyp
 
 # Confirm the environment
 echo "Current ENV: $(conda info --envs | grep '*')"
