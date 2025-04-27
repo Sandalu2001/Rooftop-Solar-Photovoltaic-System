@@ -29,6 +29,7 @@ interface SolarSliceInterface {
   date: Date;
   buildingAreas: BuildingArea[];
   seletectedBuildingArea: BuildingArea | null;
+  intensity: number;
 }
 
 const initialState: SolarSliceInterface = {
@@ -45,6 +46,7 @@ const initialState: SolarSliceInterface = {
   date: new Date(),
   buildingAreas: [],
   seletectedBuildingArea: null,
+  intensity: 0,
 };
 
 const SolarSlice = createSlice({
@@ -99,6 +101,9 @@ const SolarSlice = createSlice({
           sunLitPrecentage,
         };
       }
+    },
+    setIntensity: (state, action: PayloadAction<number>) => {
+      state.intensity = action.payload === 100 ? 0 : action.payload;
     },
   },
 
@@ -349,5 +354,6 @@ export const {
   updateBuildingArea,
   clearBuildingAreas,
   setSelectedBuildingArea,
+  setIntensity,
 } = SolarSlice.actions;
 export default SolarSlice.reducer;
