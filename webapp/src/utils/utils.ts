@@ -49,6 +49,9 @@ export function convertAnnotoriousToCOCO(
       (cat) => cat.name.toLowerCase() === categoryName.toLowerCase()
     );
 
+    const isBuildingSelected =
+      annotoriousAnn.bodies[1]?.value.toString() || "false";
+
     return {
       id: index + 1, // Generate sequential ID
       image_id: imageMetadata.id,
@@ -57,7 +60,8 @@ export function convertAnnotoriousToCOCO(
       bbox: bbox,
       area: area,
       iscrowd: 0,
-      score: 1.0, // Default confidence score
+      score: 1.0,
+      selectedBuilding: isBuildingSelected,
     };
   });
 
@@ -128,7 +132,6 @@ export const convertCOCOToAnnotorious = (cocoData: CocoDataInterface) => {
 // -------------------------- COCO to Annotorious -------------------------- //
 
 export const uploadImageSchema = yup.object({
-  dataset: yup.string().required(REQUIRED),
   latitude: yup.number().required(REQUIRED).typeError(TYPERROR),
   longtitude: yup.number().required(REQUIRED).typeError(TYPERROR),
   date: yup.date().required(REQUIRED),
@@ -199,8 +202,6 @@ export function getGradientColor(
       directLightIntensity // Normalize intensity to 0-1 in this range
     );
   } else {
-    console.log(directLightIntensity);
-
     // Yellow to Green for lower direct light
     color.lerpColors(
       new THREE.Color("green"),

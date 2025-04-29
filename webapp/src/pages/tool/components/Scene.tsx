@@ -2,17 +2,18 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { useAppSelector } from "../../../slices/store";
+import { useAppDispatch, useAppSelector } from "../../../slices/store";
 import { alpha, Grid, Slider, Stack, Typography } from "@mui/material";
 import { calculateCentroid, getGradientColor } from "../../../utils/utils";
-import FactCard from "../../../components/common/FactCard";
-import CustomFormField from "../../../components/common/CustomFormField";
-import dayjs from "dayjs";
-import { current } from "@reduxjs/toolkit";
-import { count, log } from "console";
-import { normalize } from "path";
-import { object } from "yup";
+
+import {
+  updateBuildingArea,
+  setSelectedBuildingArea,
+} from "../../../slices/solar-slice";
+import DataTable from "./Table";
+import BasicInfo from "./BasicInfo";
 var SunCalc = require("suncalc");
+
 // Green - Y
 // Blue - Z
 // Red - X
@@ -29,6 +30,8 @@ const Object = ({
   treeTrunkHeightFactor = 0.4,
   debug = true,
   lightPositions,
+  objectId,
+  isSelected,
 }: {
   segmentation: number[][];
   height: number;
@@ -39,7 +42,11 @@ const Object = ({
   treeTrunkHeightFactor?: number;
   debug?: boolean;
   lightPositions: THREE.Vector3;
+  objectId: number;
+  isSelected: String;
 }) => {
+  const dispatch = useAppDispatch();
+
   // Scale segmentation points for centroid calculation
   const scaledSegmentationPoints = useMemo(() => {
     if (
@@ -56,8 +63,23 @@ const Object = ({
         segPoints[i + 1] / SCALE_FACTOR,
       ]);
     }
+
+    // Ensure shape is closed
+    if (
+      points.length > 1 &&
+      (points[0][0] !== points[points.length - 1][0] ||
+        points[0][1] !== points[points.length - 1][1])
+    ) {
+      points.push([...points[0]]);
+    }
+    if (points.length < 3) {
+      console.warn(
+        `Insufficient points in segmentation for object ${objectId}`
+      );
+      return [];
+    }
     return points;
-  }, [segmentation]);
+  }, [segmentation, objectId]);
 
   const shape = useMemo(() => {
     const wireframeShape = new THREE.Shape();
@@ -131,13 +153,7 @@ const Object = ({
   //--------------------------------------//
 
   //---------------Tree Canopy (Cone)---------------//
-  const canopyRadius =
-    Math.max(polygonWidth, polygonDepth) * treeCanopyRadiusFactor;
   const canopyHeight = (height * treeCanopyHeightFactor) / SCALE_FACTOR;
-  const canopyGeometry = useMemo(
-    () => new THREE.ConeGeometry(canopyRadius, canopyHeight, 32),
-    [canopyRadius, canopyHeight]
-  );
 
   const canopyExtrudeSettings = {
     depth: canopyHeight,
@@ -163,8 +179,7 @@ const Object = ({
     return geom;
   }, [shape]);
 
-  const rooftopAreaRef = useRef<number>(0); // Ref to store rooftop area
-  const shadowAreaRef = useRef<number>(0); // Ref to store shadow-missing area
+  const rooftopAreaRef = useRef<number>(0);
   const { scene } = useThree();
 
   function getShapeArea(shape: THREE.Shape): number {
@@ -215,8 +230,17 @@ const Object = ({
       }
 
       rooftopAreaRef.current = topFaceArea * SCALE_FACTOR * SCALE_FACTOR; // Store in ref
+
+      dispatch(
+        updateBuildingArea({
+          objectId: objectId,
+          totalRooftopArea: rooftopAreaRef.current,
+          sunLitPrecentage: sunlitAreaRef.current,
+        })
+      );
+
       console.log(
-        `Object ID: ${categoryId}, Total Rooftop Area:`,
+        `Object ID: ${objectId}, Total Rooftop Area:`,
         rooftopAreaRef.current,
         " square meters (approx"
       ); // Log total area
@@ -309,13 +333,25 @@ const Object = ({
 
       // Now calculate the sunlit and shadowed areas based on shadowed and sunlit vertices
       const sunlitPercentage = (sunlitArea / (sunlitArea + shadowedArea)) * 100;
-      const shadowedPercentage =
-        (shadowedArea / (sunlitArea + shadowedArea)) * 100;
-
-      // You can use `sunlitArea` and `shadowedArea` values as needed
       sunlitAreaRef.current = sunlitPercentage;
-      console.log(`Sunlit Area: ${sunlitPercentage}%`);
-      console.log(`Shadowed Area: ${shadowedPercentage}%`);
+
+      dispatch(
+        updateBuildingArea({
+          objectId: objectId,
+          totalRooftopArea: rooftopAreaRef.current,
+          sunLitPrecentage: sunlitAreaRef.current,
+        })
+      );
+
+      if (isSelected == "true") {
+        dispatch(
+          setSelectedBuildingArea({
+            objectId: objectId,
+            totalRooftopArea: rooftopAreaRef.current,
+            sunLitPrecentage: sunlitAreaRef.current,
+          })
+        );
+      }
 
       const colors = new Float32Array(numVertices * 3);
       for (let i = 0; i < numVertices; i++) {
@@ -380,7 +416,10 @@ const Object = ({
       ) : (
         <>
           <mesh geometry={basedGeometry} castShadow receiveShadow>
-            <meshStandardMaterial color={"yellow"} side={THREE.DoubleSide} />
+            <meshStandardMaterial
+              color={isSelected == "false" ? "yellow" : "purple"}
+              side={THREE.DoubleSide}
+            />
           </mesh>
 
           <mesh
@@ -402,10 +441,20 @@ function Floor({ imageUrl }: { imageUrl: string | null }) {
   const coco3DJSON = useAppSelector((state) => state.solar.coco3DJSON);
   const imageData = coco3DJSON?.coco_output?.images[0];
 
+  // Default dimensions if imageData is not available
+  const planeWidth = imageData ? imageData.width / SCALE_FACTOR : 10;
+  const planeHeight = imageData ? imageData.height / SCALE_FACTOR : 10;
+
   return (
-    <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
-      <planeGeometry args={[imageData.width / 500, imageData.height / 500]} />
-      <meshStandardMaterial map={texture} color="#fff" />
+    <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, 0]} receiveShadow>
+      {" "}
+      {/* Lowered slightly */}
+      <planeGeometry args={[planeWidth, planeHeight]} />
+      <meshStandardMaterial
+        map={texture}
+        color="#ffffff"
+        side={THREE.DoubleSide}
+      />
     </mesh>
   );
 }
@@ -428,6 +477,8 @@ const Scene = ({
               height={item.object_height}
               categoryId={item.category_id}
               lightPositions={lightPositions}
+              objectId={item.id}
+              isSelected={item.selectedBuilding}
             />
           );
         }
@@ -442,7 +493,6 @@ const Visualizer1 = () => {
   const [lightPositions, setLightPositions] = React.useState([25, 100, 45]);
   const image = useAppSelector((state) => state.solar.image);
   const [imageURL, setImageURL] = useState<string | null>(null);
-
   // Check if coco3DJSON and coco_output arTHREE.e defined before accessing annotations
   const annotations = coco3DJSON?.coco_output?.annotations;
 
@@ -482,166 +532,129 @@ const Visualizer1 = () => {
     <div
       style={{
         display: "flex",
-        flexDirection: "row",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        justifyItems: "center",
         gap: 10,
-        height: "70vh",
-        marginTop: 20,
       }}
     >
       <div
         style={{
-          height: "100%",
-          flex: 3,
-          background: "#0F6A58",
-          borderRadius: 30,
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          width: "100%",
+          height: "70vh",
+          marginTop: 20,
         }}
       >
-        {annotations ? (
-          <Suspense fallback={<div>Loading...</div>}>
-            <Canvas
-              camera={{
-                position: [0, 4, 4], // Zoomed out a bit more
-                fov: 60,
-                near: 2,
-                far: 10000,
-              }}
-              shadows
-            >
-              <directionalLight
-                name="directionalLight"
-                position={
-                  new THREE.Vector3(
-                    lightPositions[0],
-                    lightPositions[1],
-                    lightPositions[2]
-                  )
-                }
-                castShadow
-                intensity={10}
-              />
-              <ambientLight intensity={0.7} position={[0, 0, 0]} />
-              <mesh
-                position={
-                  new THREE.Vector3(
-                    lightPositions[0],
-                    lightPositions[1],
-                    lightPositions[2]
-                  )
-                }
-                castShadow={false}
-                receiveShadow={false}
-              >
-                <sphereGeometry args={[1, 32, 32]} />
-                <meshBasicMaterial color="yellow" />
-              </mesh>
-              <Floor imageUrl={imageURL} />
-
-              <Scene
-                annotations={annotations}
-                lightPositions={
-                  new THREE.Vector3(
-                    lightPositions[0],
-                    lightPositions[1],
-                    lightPositions[2]
-                  )
-                }
-              />
-              <OrbitControls target={[0, 0, 0]} />
-              <axesHelper args={[2]} />
-            </Canvas>
-          </Suspense>
-        ) : (
-          <Typography
-            variant="h6"
-            style={{
-              color: "white",
-              padding: "2rem",
-            }}
-          >
-            No image found. Please upload a 3D model.
-          </Typography>
-        )}
-        <Slider
-          aria-label="Small steps"
-          onChange={(event, value) => {
-            const hour = value as number;
-
-            const date = new Date("2017-12-29");
-            date.setHours(hour, 0, 0);
-
-            const latitude = 34.488386;
-            const longitude = 117.261711;
-
-            const sunVec = getSunPositionVector(date, latitude, longitude);
-            setLightPositions(sunVec);
-          }}
-          step={1}
-          marks
-          min={0}
-          max={24}
-          valueLabelDisplay="auto"
-        />
-      </div>
-
-      <div style={{ flex: 2, height: "100%" }}>
-        <Stack
-          flex={1}
-          sx={{
-            gap: 2,
-            maxWidth: 400,
-            p: 2,
-            borderRadius: 5,
-            background: (theme) => alpha(theme.palette.primary.main, 0.1),
+        <div
+          style={{
             height: "100%",
+            flex: 4,
+            borderRadius: 15,
+            border: "1px solid #ccc",
+            background: "#8ACCD5",
           }}
         >
-          <Stack sx={{ gap: 1 }}>
+          {annotations ? (
+            <Suspense fallback={<div>Loading...</div>}>
+              <Canvas
+                camera={{
+                  position: [0, 4, 4],
+                  fov: 60,
+                  near: 2,
+                  far: 10000,
+                }}
+                shadows
+              >
+                <directionalLight
+                  name="directionalLight"
+                  position={
+                    new THREE.Vector3(
+                      lightPositions[0],
+                      lightPositions[1],
+                      lightPositions[2]
+                    )
+                  }
+                  castShadow
+                  intensity={10}
+                />
+                <ambientLight intensity={0.7} position={[0, 0, 0]} />
+                <mesh
+                  position={
+                    new THREE.Vector3(
+                      lightPositions[0] / 25,
+                      lightPositions[1] / 25,
+                      lightPositions[2] / 25
+                    )
+                  }
+                  castShadow={false}
+                  receiveShadow={false}
+                >
+                  <sphereGeometry args={[0.2, 32, 32]} />
+                  <meshBasicMaterial color="yellow" />
+                </mesh>
+                <Floor imageUrl={imageURL} />
+
+                <Scene
+                  annotations={annotations}
+                  lightPositions={
+                    new THREE.Vector3(
+                      lightPositions[0],
+                      lightPositions[1],
+                      lightPositions[2]
+                    )
+                  }
+                />
+                <OrbitControls target={[0, 0, 0]} />
+                <axesHelper args={[2]} />
+              </Canvas>
+            </Suspense>
+          ) : (
             <Typography
-              variant="h5"
-              color={"GrayText"}
-              sx={{ fontWeight: 600 }}
-            >
-              Basic Info
-            </Typography>
-            <Grid
-              container
-              spacing={2}
-              sx={{
-                background: (theme) => alpha(theme.palette.primary.main, 0.1),
-                p: 2,
-                borderRadius: 4,
+              variant="h6"
+              style={{
+                color: "white",
+                padding: "2rem",
               }}
             >
-              <CustomFormField
-                name={"latitude"}
-                label={"Latitude"}
-                onChange={() => {}}
-                value={343434.34}
-                type={"text"}
-                disabled
-              />
-              <CustomFormField
-                name={"longtitude"}
-                label={"Lontitude"}
-                onChange={() => {}}
-                value={343434.34}
-                type={"text"}
-                disabled
-              />
-              <CustomFormField
-                name={"Date"}
-                label={"Date"}
-                onChange={() => {}}
-                value={dayjs().format("YYYY-MM-DD")}
-                type={"text"}
-                disabled
-              />
-            </Grid>
-          </Stack>
-        </Stack>
+              No image found. Please upload a 3D model.
+            </Typography>
+          )}
+          <Slider
+            aria-label="Small steps"
+            onChange={(event, value) => {
+              const hour = value as number;
+
+              const date = new Date("2025-04-16");
+              date.setHours(hour, 0, 0);
+
+              const latitude = 7.8731;
+              const longitude = 80.7718;
+
+              const sunVec = getSunPositionVector(date, latitude, longitude);
+              setLightPositions(sunVec);
+            }}
+            step={1}
+            marks={[
+              { value: 0, label: "0h" },
+              { value: 6, label: "6h" },
+              { value: 12, label: "12h" },
+              { value: 18, label: "18h" },
+              { value: 24, label: "24h" },
+            ]}
+            min={0}
+            max={24}
+            valueLabelDisplay="auto"
+          />
+        </div>
+        <BasicInfo />
       </div>
+      <DataTable />
     </div>
   );
 };

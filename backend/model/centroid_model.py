@@ -17,6 +17,7 @@ import numpy as np
 import pyvista as pv
 import trimesh
 import random
+import pygltflib
 
 class BuildingShadowMatcher:
     def __init__(self):
@@ -52,9 +53,8 @@ class BuildingShadowMatcher:
             tuple: (centroid_x, centroid_y) or None if segmentation is invalid.
         """
         if not segmentation or not segmentation[0]:
-            return None  # Handle empty or invalid segmentation
-
-        polygon = np.array(segmentation[0]).reshape(-1, 2)  # Reshape to (n_points, 2)
+            return None 
+        polygon = np.array(segmentation[0]).reshape(-1, 2)  
         centroid_x = np.mean(polygon[:, 0])
         centroid_y = np.mean(polygon[:, 1])
         return centroid_x, centroid_y
@@ -70,7 +70,7 @@ class BuildingShadowMatcher:
             float: Euclidean distance.
         """
         if centroid1 is None or centroid2 is None:
-            return float('inf')  # Return infinity if either centroid is invalid
+            return float('inf')  
         x1, y1 = centroid1
         x2, y2 = centroid2
         return sqrt((x2 - x1)**2 + (y2 - y1)**2)
@@ -120,7 +120,6 @@ class BuildingShadowMatcher:
         tree_pair_id_counter = 1000  # Start at 1000 to distinguish from building pairs
 
         for image_id, annotations_in_image in image_annotations.items():
-            # Separate annotations by type
             building_annotations = [ann for ann in annotations_in_image if ann['category_id'] == building_category_id]
             shadow_annotations = [ann for ann in annotations_in_image if ann['category_id'] == shadow_category_id]
             tree_annotations = [ann for ann in annotations_in_image if ann['category_id'] == tree_category_id]
@@ -371,30 +370,24 @@ class BuildingShadowMatcher:
 
             # Create building mesh
             mesh = pv.PolyData(all_points, np.hstack(faces))
-
-            # Random building color
             building_color = [random.random(), random.random(), random.random()]
             plotter.add_mesh(mesh, color=building_color, show_edges=True)
 
         ## ---- ADD TREES ---- ##
         for footprint, height in trees:
-            # Tree position (assume centroid)
             centroid = np.mean(footprint, axis=0)
             x, y = centroid
-
-             # ----------- Tree Trunk ----------- #
-            trunk_height = height * 0.4  # 40% of the total tree height
-            trunk_radius = height * 0.1  # 10% of the tree height for trunk radius
             
-            # Place the tree trunk with its base at z = 0
+            # Tree trunk
+            trunk_height = height * 0.4  
+            trunk_radius = height * 0.1  
             trunk = pv.Cylinder(center=(x, -y, trunk_height / 2), direction=(0, 0, 1), 
                                 radius=trunk_radius, height=trunk_height)
-            plotter.add_mesh(trunk, color=(0.55, 0.27, 0.07))  # Brown trunk
+            plotter.add_mesh(trunk, color=(0.55, 0.27, 0.07))  
 
-                    #------------Tree Canopy --------------#
-            footprint_3d = np.array([(x, -y, (height - trunk_height)*0.5) for x, y in footprint]) # Bottom at 50% of height
-            top_3d = np.array([(x, -y, height) for x, y in footprint]) # Top at full height
-
+            # Tree Canopy
+            footprint_3d = np.array([(x, -y, (height - trunk_height) * 0.5) for x, y in footprint])
+            top_3d = np.array([(x, -y, height) for x, y in footprint])
             all_points = np.vstack([footprint_3d, top_3d])
             faces = []
 
@@ -409,16 +402,23 @@ class BuildingShadowMatcher:
             # Top face
             faces.append([len(footprint)] + list(range(len(footprint), len(all_points))))  
 
-            # Create building mesh
+            # Create tree canopy
             mesh = pv.PolyData(all_points, np.hstack(faces))
             plotter.add_mesh(mesh, color=(0.13, 0.55, 0.13), show_edges=True)
 
-
-
         ## ---- EXPORT MODEL ---- ##
         plotter.camera_position = 'iso'
+        light = pv.Light(position=(100, 100, 100), focal_point=(0, 0, 0), intensity=1.0)
+        plotter.add_light(light)
+
+        # First, export as GLTF (temporary file)
+        temp_gltf_path = os.path.join(output_path, "temp_model.gltf")
+        plotter.export_gltf(temp_gltf_path)
+
+        # Convert GLTF to GLB using pygltflib
+        gltf = pygltflib.GLTF2().load(temp_gltf_path)
         output_glb_path = os.path.join(output_path, "3d_model.glb")
-        plotter.export_gltf(output_glb_path)
+        gltf.save_binary(output_glb_path)
 
         return output_glb_path
 

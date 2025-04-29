@@ -16,7 +16,7 @@ const StepperComponent = () => {
       case 1:
         return <Tool setActiveStep={setActiveStep} />;
       case 2:
-        return <Visualizer1 />;
+        return <Visualizer1 setActiveStep={setActiveStep} />;
       default:
         return <Typography>Unknown Step</Typography>;
     }

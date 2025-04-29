@@ -9,6 +9,12 @@ import { error, log, warn } from "console";
 import { encode, stringify } from "querystring";
 import { arrayBuffer, buffer } from "stream/consumers";
 
+interface BuildingArea {
+  objectId: number;
+  totalRooftopArea: number;
+  sunLitPrecentage: number;
+}
+
 interface SolarSliceInterface {
   predictionState: State;
   addNewProductState: State;
@@ -18,6 +24,12 @@ interface SolarSliceInterface {
   image: File | null;
   Image3D: File | null;
   coco3DJSON: CocoDataInterface;
+  latitude: number;
+  longitude: number;
+  date: Date;
+  buildingAreas: BuildingArea[];
+  seletectedBuildingArea: BuildingArea | null;
+  intensity: number;
 }
 
 const initialState: SolarSliceInterface = {
@@ -29,6 +41,12 @@ const initialState: SolarSliceInterface = {
   coco3DJSON: { coco_output: { images: [], annotations: [], categories: [] } },
   image: null,
   Image3D: null,
+  latitude: 0,
+  longitude: 0,
+  date: new Date(),
+  buildingAreas: [],
+  seletectedBuildingArea: null,
+  intensity: 0,
 };
 
 const SolarSlice = createSlice({
@@ -41,7 +59,54 @@ const SolarSlice = createSlice({
     setImageData: (state, action: PayloadAction<File>) => {
       state.image = action.payload;
     },
+    setMetaData: (
+      state,
+      action: PayloadAction<{ latitude: number; longitude: number; date: Date }>
+    ) => {
+      const { latitude, longitude, date } = action.payload;
+      state.latitude = latitude;
+      state.longitude = longitude;
+      state.date = date;
+    },
+    updateBuildingArea: (state, action: PayloadAction<BuildingArea>) => {
+      const { objectId, totalRooftopArea, sunLitPrecentage } = action.payload;
+      const existingBuildingAreaIndex = state.buildingAreas.findIndex(
+        (area) => area.objectId === objectId
+      );
+
+      if (existingBuildingAreaIndex !== -1) {
+        state.buildingAreas[existingBuildingAreaIndex] = {
+          objectId,
+          totalRooftopArea,
+          sunLitPrecentage,
+        };
+      } else {
+        // Add new entry
+        state.buildingAreas.push(action.payload);
+      }
+    },
+    clearBuildingAreas: (state) => {
+      state.buildingAreas = [];
+    },
+    setSelectedBuildingArea: (state, action: PayloadAction<BuildingArea>) => {
+      const { objectId, totalRooftopArea, sunLitPrecentage } = action.payload;
+      const existingBuildingAreaIndex = state.buildingAreas.findIndex(
+        (area) => area.objectId === objectId
+      );
+
+      if (existingBuildingAreaIndex !== -1) {
+        state.seletectedBuildingArea = {
+          objectId,
+          totalRooftopArea,
+          sunLitPrecentage,
+        };
+      }
+    },
+    setIntensity: (state, action: PayloadAction<number>) => {
+      state.intensity = action.payload === 100 ? 0 : action.payload;
+    },
   },
+
   extraReducers: (builder) => {
     builder.addCase(getAnnotatedImage.pending, (state, action) => {
       state.predictionState = State.LOADING;
@@ -282,5 +347,13 @@ export const get3DObjectJSON = createAsyncThunk<
   }
 });
 
-export const { setUpdatePredictionState, setImageData } = SolarSlice.actions;
+export const {
+  setUpdatePredictionState,
+  setImageData,
+  setMetaData,
+  updateBuildingArea,
+  clearBuildingAreas,
+  setSelectedBuildingArea,
+  setIntensity,
+} = SolarSlice.actions;
 export default SolarSlice.reducer;

@@ -12,6 +12,11 @@ from detectron2.utils.visualizer import ColorMode
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.logger import setup_logger
 
+# --- Configuration for GCS ---
+GCS_BUCKET_NAME = 'rooftop-segmentation'           
+GCS_MODEL_BLOB_NAME = 'detectron2_model/model_final.pth' 
+# ---
+
 class DetectronModel:
     def __init__(self):
         """Load the Detectron2 model"""

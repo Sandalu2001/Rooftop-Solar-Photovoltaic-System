@@ -76,7 +76,6 @@ const Upload = ({ setActiveStep }: StepperInterface) => {
   //--- FORMIK HANDLE ------//
   const formik = useFormik({
     initialValues: {
-      dataset: "",
       latitude: 0,
       longtitude: 0,
       date: null,
@@ -278,16 +277,6 @@ languages to more easily compare and strategize"
           </Stack>
 
           <Grid container spacing={2}>
-            <CustomFormField
-              name={"dataset"}
-              label={"Dataset"}
-              value={formik.values.dataset}
-              onChange={formik.handleChange}
-              error={formik.touched.dataset && Boolean(formik.errors.dataset)}
-              onBlur={formik.handleBlur}
-              helperText={formik.touched.dataset && formik.errors.dataset}
-              type={"text"}
-            />
             <CustomFormField
               name={"latitude"}
               label={"Latitude"}
